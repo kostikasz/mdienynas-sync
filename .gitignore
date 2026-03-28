@@ -1,0 +1,77 @@
+# ─── Secrets & Environment Variables ───────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.env
+# Keep the example template
+!.env.example
+
+# ─── Scraper Output (may contain personal grade data) ───────────────────────────
+scraper/grades.json
+scraper/debug_*.html
+
+# ─── Python ─────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+wheels/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.env/
+
+# ─── Google OAuth tokens / credentials ─────────────────────────────────────────
+token.json
+credentials.json
+*.pickle
+*.token
+
+# ─── Apple Calendar output ──────────────────────────────────────────────────────
+*.ics
+
+# ─── Node / Next.js ─────────────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+
+# ─── Supabase local dev ─────────────────────────────────────────────────────────
+.supabase/
+
+# ─── IDEs & Editors ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ─── Claude Code internal ───────────────────────────────────────────────────────
+.claude/
+CLAUDE.md
+
+# ─── Logs & Misc ────────────────────────────────────────────────────────────────
+*.log
+*.tmp
+*.bak
+.cache/
