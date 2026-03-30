@@ -29,22 +29,24 @@ def parse_homework(html: str) -> list[dict]:
         cols = row.select("td")
         if len(cols) < 6:
             continue
-        lesson_date_raw = cols[0].get_text(strip=True)
-        lesson_date     = parse_date(lesson_date_raw)
-        subject         = cols[1].get_text(strip=True)
-        teacher         = cols[2].get_text(strip=True)
-        description     = cols[3].get_text(strip=True)
-        due_raw         = cols[4].get_text(strip=True)
-        due_date        = parse_date(due_raw)
+        subject        = cols[1].get_text(strip=True)
+        lesson_id      = cols[1].get("data-lesson-id")
+        teacher        = cols[2].get_text(strip=True)
+        description    = cols[3].get_text(strip=True)
+        due_date       = parse_date(cols[4].get_text(strip=True))
+        assigned_date  = parse_date(cols[5].get_text(strip=True))
+        btn            = row.select_one("a.do-homework-btn")
+        hw_url         = btn["href"] if btn and btn.get("href") else None
+
         if subject:
             entries.append({
-                "type":        "Homework",
-                "subject":     subject,
-                "content":     description,
-                "lesson_date": lesson_date,
-                "due_date":    due_date,
-                "grade":       None,
-                "teacher":     teacher,
+                "subject":       subject,
+                "lesson_id":     lesson_id,
+                "description":   description,
+                "assigned_date": assigned_date,
+                "due_date":      due_date,
+                "teacher":       teacher,
+                "homework_url":  hw_url,
             })
     return entries
 

@@ -14,9 +14,10 @@ from playwright.async_api import async_playwright, TimeoutError as PlaywrightTim
 
 from config import PORTAL_URL, PORTAL_USERNAME, PORTAL_PASSWORD, HOMEWORK_URL, GRADES_URL
 from parser import parse_homework, parse_grades
-from exporter import build_grades_json, export
+from exporter import build_grades_json, build_homework_json, export
 
-GRADES_JSON_PATH = os.path.join(os.path.dirname(__file__), "grades.json")
+GRADES_JSON_PATH   = os.path.join(os.path.dirname(__file__), "grades.json")
+HOMEWORK_JSON_PATH = os.path.join(os.path.dirname(__file__), "homework.json")
 
 
 async def login(page) -> None:
@@ -74,9 +75,12 @@ async def scrape() -> None:
         finally:
             await browser.close()
 
-    data = build_grades_json(homework_entries, grade_entries)
-    export(data, GRADES_JSON_PATH)
-    print(f"\nDone. {len(homework_entries)} homework, {len(grade_entries)} grades scraped.")
+    grades_data   = build_grades_json(grade_entries)
+    homework_data = build_homework_json(homework_entries)
+
+    export(grades_data,   GRADES_JSON_PATH)
+    export(homework_data, HOMEWORK_JSON_PATH)
+    print(f"\nDone. {len(grade_entries)} grades → grades.json | {len(homework_entries)} homework → homework.json")
 
 
 if __name__ == "__main__":
