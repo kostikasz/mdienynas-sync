@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/* ── Palette: Evergreen Forest ────────────────────────────────────
+   evergreen  #132a13  →  hunter-green #31572c  →  fern  #4f772d
+   palm-leaf  #90a955  →  lime-cream   #ecf39e
+   ─────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Light mode */
+  --bg:          #90a955;   /* palm-leaf — page background */
+  --surface:     #ecf39e;   /* lime-cream — cards / panels */
+  --surface-2:   #f4f9d5;   /* elevated surface */
+  --fg:          #132a13;   /* evergreen — primary text */
+  --fg-muted:    #31572c;   /* hunter-green — secondary text */
+  --accent:      #31572c;   /* hunter-green — interactive */
+  --accent-hov:  #132a13;   /* evergreen — hover */
+  --accent-fg:   #ecf39e;   /* lime-cream — text on accent bg */
+  --sidebar:     #4f772d;   /* fern — sidebar background */
+  --sidebar-fg:  #ecf39e;   /* lime-cream — sidebar text */
+  --s-muted:     rgba(236, 243, 158, 0.65);
+  --s-active:    rgba(236, 243, 158, 0.18);
+  --s-bdr:       rgba(49, 87, 44, 0.4);
+  --bdr:         rgba(49, 87, 44, 0.22);
+  --input-bg:    #f4f9d5;
+  --input-bdr:   rgba(49, 87, 44, 0.3);
+  --input-focus: #31572c;
+  --shadow:      0 1px 3px rgba(19, 42, 19, 0.12), 0 0 0 1px rgba(49, 87, 44, 0.06);
+}
+
+[data-theme="dark"] {
+  --bg:          #0a120a;
+  --surface:     #132a13;   /* evergreen — cards */
+  --surface-2:   #1e3618;
+  --fg:          #ecf39e;   /* lime-cream — primary text */
+  --fg-muted:    #90a955;   /* palm-leaf — secondary text */
+  --accent:      #90a955;   /* palm-leaf — interactive */
+  --accent-hov:  #ecf39e;   /* lime-cream */
+  --accent-fg:   #132a13;   /* dark text on light accent */
+  --sidebar:     #0d1a0d;
+  --sidebar-fg:  #ecf39e;
+  --s-muted:     rgba(144, 169, 85, 0.7);
+  --s-active:    rgba(144, 169, 85, 0.15);
+  --s-bdr:       rgba(49, 87, 44, 0.5);
+  --bdr:         rgba(49, 87, 44, 0.45);
+  --input-bg:    #1e3618;
+  --input-bdr:   rgba(79, 119, 45, 0.4);
+  --input-focus: #90a955;
+  --shadow:      0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(49, 87, 44, 0.2);
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--fg-muted); border-radius: 3px; opacity: 0.5; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
