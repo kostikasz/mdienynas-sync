@@ -8,6 +8,7 @@
 
 # ─── Scraper Output (may contain personal grade data) ───────────────────────────
 scraper/grades.json
+scraper/homework.json
 scraper/debug_*.html
 
 # ─── Python ─────────────────────────────────────────────────────────────────────
@@ -68,7 +69,9 @@ Thumbs.db
 
 # ─── Claude Code internal ───────────────────────────────────────────────────────
 .claude/
-CLAUDE.md
+*.md
+!README.md
+!**/README.md
 
 # ─── Logs & Misc ────────────────────────────────────────────────────────────────
 *.log
