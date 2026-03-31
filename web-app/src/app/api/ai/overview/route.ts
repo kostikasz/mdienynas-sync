@@ -126,7 +126,7 @@ export async function GET() {
 
   const admin = createAdminClient()
   const { data: { user: fullUser } } = await admin.auth.admin.getUserById(user.id)
-  const isAdmin = hasRole(fullUser, "ADMIN")
+  const isAdmin = fullUser ? hasRole(fullUser, "ADMIN") : false
 
   let isPro = false
   if (!isAdmin) {
@@ -164,7 +164,7 @@ export async function POST() {
   // Get full user record for role check
   const admin = createAdminClient()
   const { data: { user: fullUser } } = await admin.auth.admin.getUserById(user.id)
-  const isAdmin = hasRole(fullUser, "ADMIN")
+  const isAdmin = fullUser ? hasRole(fullUser, "ADMIN") : false
 
   // Check subscription
   let isPro = false
