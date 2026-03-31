@@ -28,9 +28,12 @@ var/
 sdist/
 develop-eggs/
 .installed.cfg
-lib/
 lib64/
 wheels/
+# Python venv lib dirs only (not web-app/src/lib)
+/lib/
+scraper/lib/
+integrations/lib/
 
 # Virtual environments
 .venv/
