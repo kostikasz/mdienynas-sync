@@ -83,19 +83,19 @@ export default function CalendarClient({ homework, generatedAt }: Props) {
   if (!homework) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
-        <div className="bg-white border border-[#e8dfc0] rounded-2xl p-10 max-w-md w-full shadow-sm">
-          <Upload className="w-10 h-10 text-[#bc6c25] mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-[#1c1c17] mb-2">No homework data yet</h2>
-          <p className="text-[#7a7060] text-sm mb-6">
-            Run <code className="text-[#bc6c25]">scraper.py</code> to generate{" "}
-            <code className="text-[#bc6c25]">homework.json</code>, then upload it here.
+        <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-2xl p-10 max-w-md w-full shadow-[var(--shadow)]">
+          <Upload className="w-10 h-10 text-[var(--accent)] mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-[var(--fg)] mb-2">No homework data yet</h2>
+          <p className="text-[var(--fg-muted)] text-sm mb-6">
+            Run <code className="text-[var(--accent)]">scraper.py</code> to generate{" "}
+            <code className="text-[var(--accent)]">homework.json</code>, then upload it here.
           </p>
-          <label className="cursor-pointer inline-flex items-center gap-2 bg-[#bc6c25] hover:bg-[#9e5a1f] text-white font-medium rounded-lg px-5 py-2.5 text-sm transition-colors">
+          <label className="cursor-pointer inline-flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hov)] text-[var(--accent-fg)] font-medium rounded-lg px-5 py-2.5 text-sm transition-colors">
             <Upload className="w-4 h-4" />
             {uploading ? "Uploading…" : "Upload homework.json"}
             <input type="file" accept=".json" className="hidden" onChange={handleUpload} />
           </label>
-          {uploadMsg && <p className="mt-4 text-sm text-[#7a7060]">{uploadMsg}</p>}
+          {uploadMsg && <p className="mt-4 text-sm text-[var(--fg-muted)]">{uploadMsg}</p>}
         </div>
       </div>
     )
@@ -136,27 +136,27 @@ export default function CalendarClient({ homework, generatedAt }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1c1c17]">Homework Calendar</h1>
+          <h1 className="text-2xl font-bold text-[var(--fg)]">Homework Calendar</h1>
           {generatedAt && (
-            <p className="text-xs text-[#9a9080] mt-0.5">
+            <p className="text-xs text-[var(--fg-muted)] mt-0.5">
               Data from {new Date(generatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
             </p>
           )}
         </div>
         <div className="flex items-center gap-3">
-          <label className="cursor-pointer inline-flex items-center gap-2 bg-white hover:bg-[#fef8e8] border border-[#e8dfc0] text-[#7a7060] text-sm font-medium rounded-lg px-4 py-2 transition-colors">
+          <label className="cursor-pointer inline-flex items-center gap-2 bg-[var(--surface)] hover:bg-[var(--surface-2)] border border-[var(--bdr)] text-[var(--fg-muted)] text-sm font-medium rounded-lg px-4 py-2 transition-colors">
             <Upload className="w-3.5 h-3.5" />
             {uploading ? "Uploading…" : "Sync homework.json"}
             <input type="file" accept=".json" className="hidden" onChange={handleUpload} />
           </label>
           <div className="flex items-center gap-1">
-            <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-[#e8dfc0] text-[#7a7060] hover:text-[#1c1c17] transition-colors">
+            <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-[var(--surface)] text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors">
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <span className="text-sm font-medium text-[#1c1c17] w-36 text-center">
+            <span className="text-sm font-medium text-[var(--fg)] w-36 text-center">
               {MONTHS[month]} {year}
             </span>
-            <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-[#e8dfc0] text-[#7a7060] hover:text-[#1c1c17] transition-colors">
+            <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-[var(--surface)] text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
@@ -164,21 +164,21 @@ export default function CalendarClient({ homework, generatedAt }: Props) {
       </div>
 
       {uploadMsg && (
-        <div className="bg-[#dda15e]/15 border border-[#dda15e]/30 text-[#7a4c10] text-sm rounded-lg px-4 py-3">
+        <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--fg)] text-sm rounded-lg px-4 py-3">
           {uploadMsg}
         </div>
       )}
 
       {/* Calendar grid */}
-      <div className="bg-white border border-[#e8dfc0] rounded-xl overflow-hidden shadow-sm">
-        <div className="grid grid-cols-7 border-b border-[#e8dfc0]">
+      <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl overflow-hidden shadow-[var(--shadow)]">
+        <div className="grid grid-cols-7 border-b border-[var(--bdr)]">
           {DAYS.map((d) => (
-            <div key={d} className="py-2 text-center text-xs font-medium text-[#9a9080]">{d}</div>
+            <div key={d} className="py-2 text-center text-xs font-medium text-[var(--fg-muted)]">{d}</div>
           ))}
         </div>
         <div className="grid grid-cols-7">
           {cells.map((cell, i) => {
-            if (!cell) return <div key={`e-${i}`} className="h-24 border-b border-r border-[#e8dfc0]" />
+            if (!cell) return <div key={`e-${i}`} className="h-24 border-b border-r border-[var(--bdr)]" />
 
             const { day, key } = cell
             const evs    = byDate.get(key) ?? []
@@ -189,12 +189,12 @@ export default function CalendarClient({ homework, generatedAt }: Props) {
               <div
                 key={key}
                 onClick={() => setSelected(isSel ? null : key)}
-                className={`h-24 border-b border-r border-[#e8dfc0] p-1.5 cursor-pointer transition-colors ${
-                  isSel ? "bg-[#dda15e]/10" : "hover:bg-[#fef8e8]"
+                className={`h-24 border-b border-r border-[var(--bdr)] p-1.5 cursor-pointer transition-colors ${
+                  isSel ? "bg-[var(--accent)]/10" : "hover:bg-[var(--surface-2)]"
                 }`}
               >
                 <span className={`inline-flex items-center justify-center w-6 h-6 text-xs rounded-full mb-1 ${
-                  isToday ? "bg-[#bc6c25] text-white font-bold" : "text-[#7a7060]"
+                  isToday ? "bg-[var(--accent)] text-[var(--accent-fg)] font-bold" : "text-[var(--fg-muted)]"
                 }`}>
                   {day}
                 </span>
@@ -209,7 +209,7 @@ export default function CalendarClient({ homework, generatedAt }: Props) {
                     </div>
                   ))}
                   {evs.length > 3 && (
-                    <div className="text-[10px] text-gray-500 px-1">+{evs.length - 3} more</div>
+                    <div className="text-[10px] text-[var(--fg-muted)] px-1">+{evs.length - 3} more</div>
                   )}
                 </div>
               </div>
@@ -220,27 +220,27 @@ export default function CalendarClient({ homework, generatedAt }: Props) {
 
       {/* Selected day detail */}
       {selected && (
-        <div className="bg-white border border-[#bc6c25]/30 rounded-xl p-5 shadow-sm">
-          <p className="text-sm font-semibold text-[#bc6c25] mb-4">
+        <div className="bg-[var(--surface)] border border-[var(--accent)]/30 rounded-xl p-5 shadow-[var(--shadow)]">
+          <p className="text-sm font-semibold text-[var(--accent)] mb-4">
             Due on {selected}
           </p>
           {selectedEvents.length === 0 ? (
-            <p className="text-sm text-[#9a9080]">No homework due on this day.</p>
+            <p className="text-sm text-[var(--fg-muted)]">No homework due on this day.</p>
           ) : (
             <ul className="space-y-4">
               {selectedEvents.map((ev, i) => (
                 <li key={i} className="flex items-start gap-3">
                   <div className="w-2.5 h-2.5 rounded-full shrink-0 mt-1" style={{ background: ev.color }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#1c1c17]">{ev.entry.subject}</p>
+                    <p className="text-sm font-semibold text-[var(--fg)]">{ev.entry.subject}</p>
                     {ev.entry.teacher && (
-                      <p className="text-xs text-[#9a9080] mb-1">{ev.entry.teacher}</p>
+                      <p className="text-xs text-[var(--fg-muted)] mb-1">{ev.entry.teacher}</p>
                     )}
                     {ev.entry.description && (
-                      <p className="text-sm text-[#4a4438] leading-relaxed">{ev.entry.description}</p>
+                      <p className="text-sm text-[var(--fg)] leading-relaxed">{ev.entry.description}</p>
                     )}
                     {ev.entry.assigned_date && (
-                      <p className="text-xs text-[#b0a890] mt-1">
+                      <p className="text-xs text-[var(--fg-muted)] mt-1">
                         Assigned: {ev.entry.assigned_date.slice(0, 10)}
                       </p>
                     )}
@@ -254,12 +254,12 @@ export default function CalendarClient({ homework, generatedAt }: Props) {
 
       {/* Upcoming homework list */}
       <section>
-        <h2 className="text-sm font-semibold text-[#7a7060] uppercase tracking-wider mb-3">All Homework</h2>
-        <div className="bg-white border border-[#e8dfc0] rounded-xl overflow-hidden shadow-sm">
+        <h2 className="text-sm font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">All Homework</h2>
+        <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl overflow-hidden shadow-[var(--shadow)]">
           {homework.homework.length === 0 ? (
-            <p className="text-[#9a9080] text-sm p-4">No homework entries.</p>
+            <p className="text-[var(--fg-muted)] text-sm p-4">No homework entries.</p>
           ) : (
-            <ul className="divide-y divide-[#e8dfc0]">
+            <ul className="divide-y divide-[var(--bdr)]">
               {[...homework.homework]
                 .sort((a, b) => (a.due_date ?? "").localeCompare(b.due_date ?? ""))
                 .map((entry) => {
@@ -268,14 +268,14 @@ export default function CalendarClient({ homework, generatedAt }: Props) {
                     <li key={entry.id} className="flex items-start gap-3 px-4 py-3">
                       <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: color }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#1c1c17]">{entry.subject}</p>
+                        <p className="text-sm font-medium text-[var(--fg)]">{entry.subject}</p>
                         {entry.description && (
-                          <p className="text-xs text-[#7a7060] mt-0.5 line-clamp-2">{entry.description}</p>
+                          <p className="text-xs text-[var(--fg-muted)] mt-0.5 line-clamp-2">{entry.description}</p>
                         )}
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-xs text-[#9a9080]">Due</p>
-                        <p className="text-xs font-medium text-[#1c1c17]">
+                        <p className="text-xs text-[var(--fg-muted)]">Due</p>
+                        <p className="text-xs font-medium text-[var(--fg)]">
                           {entry.due_date?.slice(0, 10) ?? "–"}
                         </p>
                       </div>

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import { startAuthentication } from "@simplewebauthn/browser"
 import { Suspense } from "react"
 import { PublicNavbar } from "@/components/PublicNavbar"
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile"
 
 function LoginForm() {
   const searchParams = useSearchParams()
@@ -19,8 +20,10 @@ function LoginForm() {
     searchParams.get("error") === "oauth" ? "OAuth sign-in failed. Please try again." : null
   )
   const [loading, setLoading] = useState<"email" | "passkey" | "google" | "discord" | null>(null)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
 
-  const emailRef = useRef<HTMLInputElement>(null)
+  const emailRef      = useRef<HTMLInputElement>(null)
+  const turnstileRef  = useRef<TurnstileInstance>(null)
 
   async function handleEmailBlur() {
     const trimmed = email.trim()
@@ -44,11 +47,33 @@ function LoginForm() {
     setError(null)
     setLoading("email")
 
+    if (!turnstileToken) {
+      setError("Please complete the security check.")
+      setLoading(null)
+      return
+    }
+
+    const verRes = await fetch("/api/auth/turnstile/verify", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ token: turnstileToken }),
+    })
+    const { success: captchaOk } = await verRes.json()
+    if (!captchaOk) {
+      setError("Security check failed. Please try again.")
+      turnstileRef.current?.reset()
+      setTurnstileToken(null)
+      setLoading(null)
+      return
+    }
+
     const supabase = createClient()
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (signInError) {
       setError("Wrong email or password.")
+      turnstileRef.current?.reset()
+      setTurnstileToken(null)
       setLoading(null)
       return
     }
@@ -286,6 +311,17 @@ function LoginForm() {
                     </button>
                   )}
                 </>
+              )}
+
+              {showPassword && (
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                  options={{ theme: "auto" }}
+                  onSuccess={(token) => setTurnstileToken(token)}
+                  onError={() => setTurnstileToken(null)}
+                  onExpire={() => setTurnstileToken(null)}
+                />
               )}
 
               {error && (

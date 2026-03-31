@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { PublicNavbar } from "@/components/PublicNavbar"
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile"
 
 function GoogleIcon() {
   return (
@@ -27,16 +28,39 @@ function DiscordIcon() {
 
 export default function RegisterPage() {
   const router = useRouter()
-  const [email,    setEmail]    = useState("")
-  const [password, setPassword] = useState("")
-  const [error,    setError]    = useState<string | null>(null)
-  const [loading,  setLoading]  = useState<"email" | "google" | "discord" | null>(null)
-  const [done,     setDone]     = useState(false)
+  const [email,          setEmail]          = useState("")
+  const [password,       setPassword]       = useState("")
+  const [error,          setError]          = useState<string | null>(null)
+  const [loading,        setLoading]        = useState<"email" | "google" | "discord" | null>(null)
+  const [done,           setDone]           = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+
+  const turnstileRef = useRef<TurnstileInstance>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     setLoading("email")
+
+    if (!turnstileToken) {
+      setError("Please complete the security check.")
+      setLoading(null)
+      return
+    }
+
+    const verRes = await fetch("/api/auth/turnstile/verify", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ token: turnstileToken }),
+    })
+    const { success: captchaOk } = await verRes.json()
+    if (!captchaOk) {
+      setError("Security check failed. Please try again.")
+      turnstileRef.current?.reset()
+      setTurnstileToken(null)
+      setLoading(null)
+      return
+    }
 
     const supabase = createClient()
     const { error } = await supabase.auth.signUp({
@@ -47,6 +71,8 @@ export default function RegisterPage() {
 
     if (error) {
       setError(error.message)
+      turnstileRef.current?.reset()
+      setTurnstileToken(null)
       setLoading(null)
     } else {
       setDone(true)
@@ -213,6 +239,15 @@ export default function RegisterPage() {
                   autoComplete="new-password"
                 />
               </div>
+
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                options={{ theme: "auto" }}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onError={() => setTurnstileToken(null)}
+                onExpire={() => setTurnstileToken(null)}
+              />
 
               {error && (
                 <p

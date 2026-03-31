@@ -30,9 +30,9 @@ export default async function CoursesPage() {
   return (
     <AppShell>
       <div className="p-6 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-[#1c1c17] mb-6">Courses</h1>
+        <h1 className="text-2xl font-bold text-[var(--fg)] mb-6">Courses</h1>
         {courses.length === 0 ? (
-          <p className="text-[#9a9080]">No courses found. Upload a grades.json first.</p>
+          <p className="text-[var(--fg-muted)]">No courses found. Upload a grades.json first.</p>
         ) : (
           <div className="space-y-2">
             {courses.map((course, idx) => {
@@ -42,14 +42,14 @@ export default async function CoursesPage() {
                 <Link
                   key={course.id}
                   href={`/courses/${encodeURIComponent(course.id)}`}
-                  className="flex items-center gap-4 bg-white border border-[#e8dfc0] rounded-xl px-5 py-4 hover:border-[#dda15e]/60 transition-colors group shadow-sm"
+                  className="flex items-center gap-4 bg-[var(--surface)] border border-[var(--bdr)] rounded-xl px-5 py-4 hover:border-[var(--accent)]/60 transition-colors group shadow-[var(--shadow)]"
                 >
                   <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1c1c17] truncate group-hover:text-[#bc6c25] transition-colors">
+                    <p className="text-sm font-medium text-[var(--fg)] truncate group-hover:text-[var(--accent)] transition-colors">
                       {course.name}
                     </p>
-                    <p className="text-xs text-[#9a9080] mt-0.5">
+                    <p className="text-xs text-[var(--fg-muted)] mt-0.5">
                       {course.assignments.length} grade entries
                       {course.instructor ? ` · ${course.instructor}` : ""}
                     </p>

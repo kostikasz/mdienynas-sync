@@ -398,7 +398,7 @@ export default function SecurityClient() {
   return (
     <div className="flex min-h-full">
       {/* ── Internal sidebar ───────────────────────────────────────────── */}
-      <aside className="w-56 shrink-0 border-r border-[#e8dfc0] px-3 py-8 min-h-screen">
+      <aside className="w-56 shrink-0 border-r border-[var(--bdr)] px-3 py-8 min-h-screen">
         <p className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
           Security
         </p>
@@ -409,8 +409,8 @@ export default function SecurityClient() {
               onClick={() => setActiveSection(id)}
               className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeSection === id
-                  ? "bg-[#bc6c25]/15 text-[#bc6c25]"
-                  : "text-[#7a7060] hover:text-[#1c1c17] hover:bg-[#f5f0e0]"
+                  ? "bg-[var(--accent)]/15 text-[var(--accent)]"
+                  : "text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-2)]"
               }`}
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -436,7 +436,7 @@ export default function SecurityClient() {
               <p className="text-gray-400 text-sm mt-1">Your account security at a glance.</p>
             </div>
 
-            <div className="bg-white border border-[#e8dfc0] rounded-xl divide-y divide-[#e8dfc0]">
+            <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl divide-y divide-[var(--bdr)]">
               {/* 2FA status */}
               <div className="flex items-center justify-between px-4 py-3">
                 <div>
@@ -467,7 +467,7 @@ export default function SecurityClient() {
                 </div>
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
                   passwordlessKeys.length > 0
-                    ? "bg-[#bc6c25]/15 text-[#bc6c25]"
+                    ? "bg-[var(--accent)]/15 text-[var(--accent)]"
                     : "bg-gray-500/20 text-gray-400"
                 }`}>
                   {passwordlessKeys.length > 0 ? "Active" : "None"}
@@ -486,7 +486,7 @@ export default function SecurityClient() {
                 </div>
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
                   googleIdentity || discordIdentity
-                    ? "bg-[#bc6c25]/15 text-[#bc6c25]"
+                    ? "bg-[var(--accent)]/15 text-[var(--accent)]"
                     : "bg-gray-500/20 text-gray-400"
                 }`}>
                   {googleIdentity || discordIdentity ? "Connected" : "None"}
@@ -513,7 +513,7 @@ export default function SecurityClient() {
               </h2>
 
               {hasTotp && !totpEnroll ? (
-                <div className="bg-white border border-[#e8dfc0] rounded-xl divide-y divide-[#e8dfc0]">
+                <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl divide-y divide-[var(--bdr)]">
                   {verifiedFactors.filter((f) => f.factor_type === "totp").map((f) => (
                     <div key={f.id} className="flex items-center justify-between px-4 py-3 gap-4">
                       <div className="flex items-center gap-3 min-w-0">
@@ -539,7 +539,7 @@ export default function SecurityClient() {
                   </div>
                 </div>
               ) : totpEnroll ? (
-                <div className="bg-white border border-[#e8dfc0] rounded-xl p-5 space-y-5">
+                <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl p-5 space-y-5">
                   <div>
                     <p className="text-sm font-medium text-white">Scan this QR code</p>
                     <p className="text-xs text-gray-500">
@@ -547,7 +547,7 @@ export default function SecurityClient() {
                     </p>
                   </div>
                   <div className="flex justify-center">
-                    <div className="bg-white rounded-xl p-3 inline-flex">
+                    <div className="bg-[var(--surface)] rounded-xl p-3 inline-flex">
                       <div
                         className="w-44 h-44 [&_svg]:w-full [&_svg]:h-full [&_svg]:block"
                         dangerouslySetInnerHTML={{ __html: totpEnroll.svgCode }}
@@ -556,7 +556,7 @@ export default function SecurityClient() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Can&apos;t scan? Enter this code manually:</p>
-                    <code className="block text-xs text-[#dda15e] bg-[#fefae0] border border-[#e8dfc0] rounded px-3 py-2 tracking-widest break-all select-all">
+                    <code className="block text-xs text-[var(--accent)] bg-[var(--input-bg)] border border-[var(--bdr)] rounded px-3 py-2 tracking-widest break-all select-all">
                       {totpEnroll.secret}
                     </code>
                   </div>
@@ -573,7 +573,7 @@ export default function SecurityClient() {
                         required
                         autoFocus
                         autoComplete="one-time-code"
-                        className="w-full bg-[#fefae0] border border-[#e8dfc0] rounded-lg px-4 py-2.5 text-[#1c1c17] text-lg tracking-widest text-center font-mono placeholder-[#c0b090] focus:outline-none focus:border-[#bc6c25] transition-colors"
+                        className="w-full bg-[var(--input-bg)] border border-[var(--bdr)] rounded-lg px-4 py-2.5 text-[var(--fg)] text-lg tracking-widest text-center font-mono placeholder-[var(--fg-muted)] focus:outline-none focus:border-[var(--input-focus)] transition-colors"
                         placeholder="000000"
                       />
                     </div>
@@ -584,14 +584,14 @@ export default function SecurityClient() {
                       <button
                         type="submit"
                         disabled={totpLoading || totpCode.replace(/\s/g, "").length < 6}
-                        className="flex-1 bg-[#bc6c25] hover:bg-[#9e5a1f] disabled:opacity-50 text-white font-medium rounded-lg py-2.5 text-sm transition-colors"
+                        className="flex-1 bg-[var(--accent)] hover:bg-[var(--accent-hov)] disabled:opacity-50 text-[var(--accent-fg)] font-medium rounded-lg py-2.5 text-sm transition-colors"
                       >
                         {totpLoading ? "Verifying…" : "Confirm"}
                       </button>
                       <button
                         type="button"
                         onClick={cancelTotpEnroll}
-                        className="px-4 py-2.5 rounded-lg border border-[#e8dfc0] text-gray-400 hover:text-white text-sm transition-colors"
+                        className="px-4 py-2.5 rounded-lg border border-[var(--bdr)] text-gray-400 hover:text-white text-sm transition-colors"
                       >
                         Cancel
                       </button>
@@ -599,7 +599,7 @@ export default function SecurityClient() {
                   </form>
                 </div>
               ) : (
-                <div className="bg-white border border-[#e8dfc0] rounded-xl p-5">
+                <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl p-5">
                   <p className="text-sm text-gray-400 mb-4">
                     Use Google Authenticator, Authy, or any TOTP-compatible app as a second factor.
                   </p>
@@ -609,7 +609,7 @@ export default function SecurityClient() {
                   <button
                     onClick={startTotpEnroll}
                     disabled={totpLoading}
-                    className="inline-flex items-center gap-2 bg-[#bc6c25] hover:bg-[#9e5a1f] disabled:opacity-50 text-white font-medium rounded-lg px-4 py-2.5 text-sm transition-colors"
+                    className="inline-flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hov)] disabled:opacity-50 text-[var(--accent-fg)] font-medium rounded-lg px-4 py-2.5 text-sm transition-colors"
                   >
                     <AppIcon />
                     {totpLoading ? "Starting…" : "Set up authenticator app"}
@@ -625,7 +625,7 @@ export default function SecurityClient() {
               </h2>
 
               {!loadingList && twoFaPasskeys.length > 0 && (
-                <ul className="bg-white border border-[#e8dfc0] rounded-xl divide-y divide-[#e8dfc0] mb-3">
+                <ul className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl divide-y divide-[var(--bdr)] mb-3">
                   {twoFaPasskeys.map((pk) => (
                     <PasskeyRow
                       key={pk.id}
@@ -638,7 +638,7 @@ export default function SecurityClient() {
                 </ul>
               )}
 
-              <div className="bg-white border border-[#e8dfc0] rounded-xl p-5">
+              <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl p-5">
                 <p className="text-sm text-gray-400 mb-4">
                   Register a hardware key (YubiKey) or device biometric to use as a second factor alongside your password.
                 </p>
@@ -650,7 +650,7 @@ export default function SecurityClient() {
                       value={keyNameMfa}
                       onChange={(e) => setKeyNameMfa(e.target.value)}
                       maxLength={60}
-                      className="w-full bg-[#fefae0] border border-[#e8dfc0] rounded-lg px-4 py-2.5 text-[#1c1c17] text-sm placeholder-[#c0b090] focus:outline-none focus:border-[#bc6c25] transition-colors"
+                      className="w-full bg-[var(--input-bg)] border border-[var(--bdr)] rounded-lg px-4 py-2.5 text-[var(--fg)] text-sm placeholder-[var(--fg-muted)] focus:outline-none focus:border-[var(--input-focus)] transition-colors"
                       placeholder="e.g. YubiKey 5C"
                     />
                   </div>
@@ -660,7 +660,7 @@ export default function SecurityClient() {
                   <button
                     type="submit"
                     disabled={keyLoading}
-                    className="inline-flex items-center gap-2 bg-white hover:bg-white/5 disabled:opacity-50 border border-[#e8dfc0] text-white font-medium rounded-lg px-4 py-2.5 text-sm transition-colors"
+                    className="inline-flex items-center gap-2 bg-[var(--surface)] hover:bg-[var(--surface-2)] disabled:opacity-50 border border-[var(--bdr)] text-[var(--fg)] font-medium rounded-lg px-4 py-2.5 text-sm transition-colors"
                   >
                     <KeyIcon />
                     {keyLoading ? "Waiting for authenticator…" : "Add passkey"}
@@ -688,7 +688,7 @@ export default function SecurityClient() {
               </h2>
 
               {!loadingList && passwordlessKeys.length > 0 && (
-                <ul className="bg-white border border-[#e8dfc0] rounded-xl divide-y divide-[#e8dfc0] mb-3">
+                <ul className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl divide-y divide-[var(--bdr)] mb-3">
                   {passwordlessKeys.map((pk) => (
                     <PasskeyRow
                       key={pk.id}
@@ -701,7 +701,7 @@ export default function SecurityClient() {
                 </ul>
               )}
 
-              <div className="bg-white border border-[#e8dfc0] rounded-xl p-5">
+              <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl p-5">
                 <p className="text-sm text-gray-400 mb-4">
                   Register Face ID, Touch ID, Windows Hello, or a hardware security key to sign in without a password.
                 </p>
@@ -713,7 +713,7 @@ export default function SecurityClient() {
                       value={keyNamePwdless}
                       onChange={(e) => setKeyNamePwdless(e.target.value)}
                       maxLength={60}
-                      className="w-full bg-[#fefae0] border border-[#e8dfc0] rounded-lg px-4 py-2.5 text-[#1c1c17] text-sm placeholder-[#c0b090] focus:outline-none focus:border-[#bc6c25] transition-colors"
+                      className="w-full bg-[var(--input-bg)] border border-[var(--bdr)] rounded-lg px-4 py-2.5 text-[var(--fg)] text-sm placeholder-[var(--fg-muted)] focus:outline-none focus:border-[var(--input-focus)] transition-colors"
                       placeholder="e.g. MacBook Touch ID"
                     />
                   </div>
@@ -723,7 +723,7 @@ export default function SecurityClient() {
                   <button
                     type="submit"
                     disabled={keyLoading}
-                    className="inline-flex items-center gap-2 bg-white hover:bg-white/5 disabled:opacity-50 border border-[#e8dfc0] text-white font-medium rounded-lg px-4 py-2.5 text-sm transition-colors"
+                    className="inline-flex items-center gap-2 bg-[var(--surface)] hover:bg-[var(--surface-2)] disabled:opacity-50 border border-[var(--bdr)] text-[var(--fg)] font-medium rounded-lg px-4 py-2.5 text-sm transition-colors"
                   >
                     <KeyIcon />
                     {keyLoading ? "Waiting for authenticator…" : "Add passkey / security key"}
@@ -738,7 +738,7 @@ export default function SecurityClient() {
                 Social Providers
               </h2>
 
-              <div className="bg-white border border-[#e8dfc0] rounded-xl divide-y divide-[#e8dfc0]">
+              <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl divide-y divide-[var(--bdr)]">
                 {/* Google */}
                 <div className="flex items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -762,7 +762,7 @@ export default function SecurityClient() {
                     <button
                       onClick={() => linkProvider("google")}
                       disabled={linkingProvider === "google"}
-                      className="text-xs bg-[#bc6c25] hover:bg-[#9e5a1f] disabled:opacity-50 text-white font-medium rounded-lg px-3 py-1.5 transition-colors"
+                      className="text-xs bg-[var(--accent)] hover:bg-[var(--accent-hov)] disabled:opacity-50 text-[var(--accent-fg)] font-medium rounded-lg px-3 py-1.5 transition-colors"
                     >
                       {linkingProvider === "google" ? "Redirecting…" : "Add Google"}
                     </button>
@@ -792,7 +792,7 @@ export default function SecurityClient() {
                     <button
                       onClick={() => linkProvider("discord")}
                       disabled={linkingProvider === "discord"}
-                      className="text-xs bg-[#bc6c25] hover:bg-[#9e5a1f] disabled:opacity-50 text-white font-medium rounded-lg px-3 py-1.5 transition-colors"
+                      className="text-xs bg-[var(--accent)] hover:bg-[var(--accent-hov)] disabled:opacity-50 text-[var(--accent-fg)] font-medium rounded-lg px-3 py-1.5 transition-colors"
                     >
                       {linkingProvider === "discord" ? "Redirecting…" : "Add Discord"}
                     </button>
@@ -811,7 +811,7 @@ export default function SecurityClient() {
               <p className="text-gray-400 text-sm mt-1">Update your account password.</p>
             </div>
 
-            <div className="bg-white border border-[#e8dfc0] rounded-xl p-5">
+            <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl p-5">
               <form onSubmit={changePassword} className="space-y-3">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Current password</label>
@@ -821,7 +821,7 @@ export default function SecurityClient() {
                     onChange={(e) => setCpCurrent(e.target.value)}
                     required
                     autoComplete="current-password"
-                    className="w-full bg-[#fefae0] border border-[#e8dfc0] rounded-lg px-4 py-2.5 text-[#1c1c17] text-sm placeholder-[#c0b090] focus:outline-none focus:border-[#bc6c25] transition-colors"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--bdr)] rounded-lg px-4 py-2.5 text-[var(--fg)] text-sm placeholder-[var(--fg-muted)] focus:outline-none focus:border-[var(--input-focus)] transition-colors"
                     placeholder="••••••••"
                   />
                 </div>
@@ -834,14 +834,14 @@ export default function SecurityClient() {
                     required
                     minLength={8}
                     autoComplete="new-password"
-                    className="w-full bg-[#fefae0] border border-[#e8dfc0] rounded-lg px-4 py-2.5 text-[#1c1c17] text-sm placeholder-[#c0b090] focus:outline-none focus:border-[#bc6c25] transition-colors"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--bdr)] rounded-lg px-4 py-2.5 text-[var(--fg)] text-sm placeholder-[var(--fg-muted)] focus:outline-none focus:border-[var(--input-focus)] transition-colors"
                     placeholder="Minimum 8 characters"
                   />
                 </div>
                 {hasTotp && (
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">
-                      Authenticator code <span className="text-[#bc6c25]">(required — 2FA is enabled)</span>
+                      Authenticator code <span className="text-[var(--accent)]">(required — 2FA is enabled)</span>
                     </label>
                     <input
                       type="text"
@@ -852,7 +852,7 @@ export default function SecurityClient() {
                       onChange={(e) => setCpTotp(e.target.value)}
                       required
                       autoComplete="one-time-code"
-                      className="w-full bg-[#fefae0] border border-[#e8dfc0] rounded-lg px-4 py-2.5 text-[#1c1c17] text-lg tracking-widest text-center font-mono placeholder-[#c0b090] focus:outline-none focus:border-[#bc6c25] transition-colors"
+                      className="w-full bg-[var(--input-bg)] border border-[var(--bdr)] rounded-lg px-4 py-2.5 text-[var(--fg)] text-lg tracking-widest text-center font-mono placeholder-[var(--fg-muted)] focus:outline-none focus:border-[var(--input-focus)] transition-colors"
                       placeholder="000000"
                     />
                   </div>
@@ -863,7 +863,7 @@ export default function SecurityClient() {
                 <button
                   type="submit"
                   disabled={cpLoading || !cpCurrent || cpNew.length < 8 || (hasTotp && cpTotp.replace(/\s/g, "").length < 6)}
-                  className="w-full bg-[#bc6c25] hover:bg-[#9e5a1f] disabled:opacity-50 text-white font-medium rounded-lg py-2.5 text-sm transition-colors"
+                  className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hov)] disabled:opacity-50 text-[var(--accent-fg)] font-medium rounded-lg py-2.5 text-sm transition-colors"
                 >
                   {cpLoading ? "Changing password…" : "Change password"}
                 </button>
@@ -905,8 +905,8 @@ function PasskeyRow({
               onClick={() => onToggle(pk.id, false)}
               className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
                 !pk.use_as_2fa
-                  ? "bg-[#bc6c25]/15 text-[#bc6c25] border border-[#bc6c25]/30"
-                  : "text-gray-600 hover:text-gray-400 border border-transparent hover:border-[#e8dfc0] hover:bg-[#f5f0e0]"
+                  ? "bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30"
+                  : "text-gray-600 hover:text-gray-400 border border-transparent hover:border-[var(--bdr)] hover:bg-[var(--surface-2)]"
               }`}
             >
               Passwordless
@@ -916,7 +916,7 @@ function PasskeyRow({
               className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
                 pk.use_as_2fa
                   ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                  : "text-gray-600 hover:text-gray-400 border border-transparent hover:border-[#e8dfc0] hover:bg-[#f5f0e0]"
+                  : "text-gray-600 hover:text-gray-400 border border-transparent hover:border-[var(--bdr)] hover:bg-[var(--surface-2)]"
               }`}
             >
               Two-factor

@@ -7,9 +7,9 @@
 
 :root {
   /* Light mode */
-  --bg:          #90a955;   /* palm-leaf — page background */
-  --surface:     #ecf39e;   /* lime-cream — cards / panels */
-  --surface-2:   #f4f9d5;   /* elevated surface */
+  --bg:          #ecf39e;   /* lime-cream — page background */
+  --surface:     #f4f9d5;   /* pale lime — cards / panels */
+  --surface-2:   #fafde8;   /* near-white lime — elevated surface */
   --fg:          #132a13;   /* evergreen — primary text */
   --fg-muted:    #31572c;   /* hunter-green — secondary text */
   --accent:      #31572c;   /* hunter-green — interactive */
@@ -21,10 +21,10 @@
   --s-active:    rgba(236, 243, 158, 0.18);
   --s-bdr:       rgba(49, 87, 44, 0.4);
   --bdr:         rgba(49, 87, 44, 0.22);
-  --input-bg:    #f4f9d5;
+  --input-bg:    #fafde8;
   --input-bdr:   rgba(49, 87, 44, 0.3);
   --input-focus: #31572c;
-  --shadow:      0 1px 3px rgba(19, 42, 19, 0.12), 0 0 0 1px rgba(49, 87, 44, 0.06);
+  --shadow:      0 1px 3px rgba(19, 42, 19, 0.10), 0 0 0 1px rgba(49, 87, 44, 0.08);
 }
 
 [data-theme="dark"] {
