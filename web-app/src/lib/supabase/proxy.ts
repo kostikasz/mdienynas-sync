@@ -32,12 +32,14 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Route categories
-  const isAuthRoute   = pathname.startsWith("/login") || pathname.startsWith("/register")
+  const isAuthRoute     = pathname.startsWith("/login") || pathname.startsWith("/register")
   // MFA page and OAuth callback must always be reachable mid-auth
-  const isMfaRoute    = pathname.startsWith("/auth/")
+  const isMfaRoute      = pathname.startsWith("/auth/")
   // API routes handle auth themselves and must return JSON 401, not an HTML redirect
-  const isApiRoute    = pathname.startsWith("/api")
-  const isPublic      = pathname === "/" || isAuthRoute || isMfaRoute || isApiRoute
+  const isApiRoute      = pathname.startsWith("/api")
+  // Checkout is public — unauthenticated users can view the cart and sign in inline
+  const isCheckoutRoute = pathname.startsWith("/checkout")
+  const isPublic        = pathname === "/" || isAuthRoute || isMfaRoute || isApiRoute || isCheckoutRoute
 
   // ── No session → send to login (except public routes) ──────────────────────
   if (!user && !isPublic) {
