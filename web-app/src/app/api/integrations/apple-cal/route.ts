@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
-import type { HomeworkData, HomeworkEntry } from "@/types/homework"
+import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
+import type { HomeworkData } from "@/types/homework"
 
 const SUBJECT_COLORS = [
   "#FF2D55", "#FF9500", "#FFCC00", "#4CD964", "#5AC8FA",
@@ -24,7 +25,6 @@ function stableUid(id: string): string {
   return Math.abs(hash).toString(16).padStart(8, "0") + "@mdienynas-hw"
 }
 
-/** Escape text for use in iCalendar property values (RFC 5545 §3.3.11). */
 function escapeIcs(value: string): string {
   return value
     .replace(/\\/g, "\\\\")
@@ -34,19 +34,15 @@ function escapeIcs(value: string): string {
 }
 
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { data: snapshot } = await supabase
-    .from("homework_snapshots")
-    .select("raw_json")
-    .eq("user_id", user.id)
-    .order("generated_at", { ascending: false })
-    .limit(1)
-    .single()
+  const snapshot = await prisma.homeworkSnapshot.findFirst({
+    where:   { userId: session.user.id },
+    orderBy: { generatedAt: "desc" },
+  })
 
-  const hw = snapshot?.raw_json as HomeworkData | undefined
+  const hw = snapshot?.rawJson as HomeworkData | undefined
   if (!hw) return NextResponse.json({ error: "No homework data found" }, { status: 404 })
 
   const subjectColors: Record<string, string> = {}
@@ -72,8 +68,8 @@ export async function GET() {
     const color = subjectColors[entry.subject]
 
     const descParts = [`Subject: ${escapeIcs(entry.subject)}`]
-    if (entry.teacher)     descParts.push(`Teacher: ${escapeIcs(entry.teacher)}`)
-    if (entry.description) descParts.push(`Task: ${escapeIcs(entry.description)}`)
+    if (entry.teacher)       descParts.push(`Teacher: ${escapeIcs(entry.teacher)}`)
+    if (entry.description)   descParts.push(`Task: ${escapeIcs(entry.description)}`)
     if (entry.assigned_date) descParts.push(`Assigned: ${entry.assigned_date.slice(0, 10)}`)
 
     const summary = escapeIcs(`[HW] ${entry.subject}: ${(entry.description ?? "").slice(0, 60)}`)
@@ -84,7 +80,7 @@ export async function GET() {
       `SUMMARY:${summary}`,
       `DTSTART;VALUE=DATE:${dt}`,
       `DTEND;VALUE=DATE:${dt}`,
-      `DESCRIPTION:${descParts.join("\\n")}`,  // \\n is the iCal line-break literal
+      `DESCRIPTION:${descParts.join("\\n")}`,
       `X-APPLE-CALENDAR-COLOR:${color}`,
       "END:VEVENT"
     )
