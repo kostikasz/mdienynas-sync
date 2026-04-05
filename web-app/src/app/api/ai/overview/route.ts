@@ -127,7 +127,10 @@ export async function POST() {
 
   const gradesSummary = buildGradesSummary(snapshot.rawJson as unknown as GradesSnapshot)
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return NextResponse.json({ error: "AI not configured" }, { status: 500 })
+
+  const anthropic = new Anthropic({ apiKey })
   let claudeResponse: Anthropic.Message
 
   try {

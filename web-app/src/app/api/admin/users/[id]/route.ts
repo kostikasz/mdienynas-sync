@@ -30,8 +30,13 @@ export async function PATCH(
     return NextResponse.json({ ok: true })
   }
 
+  const ALLOWED_ROLES = ["ADMIN", "CLOUD"]
+
   if (action === "addRole" || action === "removeRole") {
     if (!role) return NextResponse.json({ error: "role is required" }, { status: 400 })
+    if (!ALLOWED_ROLES.includes(role)) {
+      return NextResponse.json({ error: "Invalid role" }, { status: 400 })
+    }
 
     if (action === "removeRole" && role === "ADMIN" && id === caller.user.id) {
       return NextResponse.json({ error: "Cannot remove your own ADMIN role" }, { status: 403 })
