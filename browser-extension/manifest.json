@@ -6,8 +6,8 @@
   "permissions": ["storage"],
   "host_permissions": [
     "https://www.manodienynas.lt/*",
-    "https://*.supabase.co/*",
-    "http://localhost:3000/*"
+    "https://auth.mdienynas.kostikas.cloud/*",
+    "https://mdienynas.kostikas.cloud/*"
   ],
   "background": {
     "service_worker": "background.js"

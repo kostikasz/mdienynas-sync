@@ -1,5 +1,4 @@
-// Replace these with values from web-app/.env.local
-const KEYCLOAK_TOKEN_URL = "https://auth.yourdomain.com/realms/mdienynas/protocol/openid-connect/token"
+const KEYCLOAK_TOKEN_URL = "https://auth.mdienynas.kostikas.cloud/realms/mdienynas/protocol/openid-connect/token"
 const CLIENT_ID          = "mdienynas-extension"
 
 export interface StoredSession {
