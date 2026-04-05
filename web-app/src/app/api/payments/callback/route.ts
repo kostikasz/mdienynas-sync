@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { prisma } from "@/lib/prisma"
 
-// POST /api/payments/callback
-// Called server-to-server by Paysera to confirm a payment.
-// No user auth — uses the admin/service client.
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>
   try {
@@ -13,86 +10,40 @@ export async function POST(req: NextRequest) {
   }
 
   const orderId = (body.order_id ?? body.orderid) as string | undefined
-  const status  = (body.status ?? body.payment_status) as string | undefined
+  const status  = (body.status  ?? body.payment_status) as string | undefined
 
-  if (!orderId) {
-    return NextResponse.json({ error: "Missing order_id" }, { status: 400 })
-  }
+  if (!orderId) return NextResponse.json({ error: "Missing order_id" }, { status: 400 })
 
-  const admin = createAdminClient()
+  const payment = await prisma.payment.findFirst({
+    where: { metadata: { path: ["order_id"], equals: orderId } },
+    select: { id: true, userId: true, status: true },
+  })
 
-  // Find the pending payment by order_id stored in metadata
-  const { data: payments, error: queryError } = await admin
-    .from("payments")
-    .select("id, user_id, status")
-    .eq("metadata->>order_id", orderId)
-    .limit(1)
-
-  if (queryError) {
-    console.error("Callback: failed to query payments:", queryError)
-    return NextResponse.json({ error: "DB error" }, { status: 500 })
-  }
-
-  const payment = payments?.[0]
   if (!payment) {
     console.warn("Callback: no payment found for order_id", orderId)
-    // Return 200 to prevent Paysera from retrying indefinitely
     return NextResponse.json({ ok: true })
   }
 
-  // Only act on paid/completed statuses
-  const isPaid =
-    status === "paid" ||
-    status === "completed" ||
-    status === "1" ||
-    status === "confirmed"
-
+  const isPaid = ["paid", "completed", "1", "confirmed"].includes(status ?? "")
   if (!isPaid) {
-    console.log(`Callback: order ${orderId} status is "${status}" — no action taken`)
+    console.log(`Callback: order ${orderId} status "${status}" — no action taken`)
     return NextResponse.json({ ok: true })
   }
 
-  // Idempotency — skip if already processed
-  if (payment.status === "paid") {
-    return NextResponse.json({ ok: true })
-  }
+  if (payment.status === "paid") return NextResponse.json({ ok: true })
 
-  // Update payment status to paid
-  const { error: updateError } = await admin
-    .from("payments")
-    .update({
-      status: "paid",
-      provider_order_id: orderId,
-    })
-    .eq("id", payment.id)
+  await prisma.payment.update({
+    where: { id: payment.id },
+    data:  { status: "paid", providerOrderId: orderId },
+  })
 
-  if (updateError) {
-    console.error("Callback: failed to update payment:", updateError)
-    return NextResponse.json({ error: "Failed to update payment" }, { status: 500 })
-  }
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
-  // Create/update subscription — +30 days from now
-  const startedAt  = new Date().toISOString()
-  const expiresAt  = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-
-  const { error: subError } = await admin
-    .from("subscriptions")
-    .upsert(
-      {
-        user_id:    payment.user_id,
-        plan:       "pro",
-        status:     "active",
-        started_at: startedAt,
-        expires_at: expiresAt,
-      },
-      { onConflict: "user_id" }
-    )
-
-  if (subError) {
-    console.error("Callback: failed to upsert subscription:", subError)
-    // Don't return 500 — payment is already marked paid; subscription can be
-    // corrected manually. Returning 500 would cause Paysera to retry.
-  }
+  await prisma.subscription.upsert({
+    where:  { userId: payment.userId },
+    update: { plan: "pro", status: "active", startedAt: new Date(), expiresAt },
+    create: { userId: payment.userId, plan: "pro", status: "active", expiresAt },
+  })
 
   return NextResponse.json({ ok: true })
 }
