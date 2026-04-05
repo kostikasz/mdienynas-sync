@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       userId,
       scrapedAt,
       term:    typeof metadata.term === "string" ? metadata.term : null,
-      rawJson: body,
+      rawJson: body as never,
     },
     select: { id: true },
   })
