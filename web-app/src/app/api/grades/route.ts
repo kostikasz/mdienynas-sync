@@ -1,40 +1,32 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@/lib/auth"
+import { getBearerUserId } from "@/lib/auth/getBearerUserId"
+import { prisma } from "@/lib/prisma"
 
-const MAX_BODY_BYTES = 2 * 1024 * 1024 // 2 MB
+const MAX_BODY_BYTES = 2 * 1024 * 1024
 
-// GET /api/grades — return latest snapshot for authenticated user
-export async function GET() {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  const { data, error } = await supabase
-    .from("grades_snapshots")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("scraped_at", { ascending: false })
-    .limit(1)
-    .single()
-
-  if (error) {
-    return NextResponse.json({ error: "No grades data found" }, { status: 404 })
-  }
-
-  return NextResponse.json(data)
+async function resolveUserId(req: NextRequest): Promise<string | null> {
+  const session = await auth()
+  if (session?.user.id) return session.user.id
+  return getBearerUserId(req)
 }
 
-// POST /api/grades — upload a new grades.json snapshot
-export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+export async function GET(req: NextRequest) {
+  const userId = await resolveUserId(req)
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const snapshot = await prisma.gradesSnapshot.findFirst({
+    where:   { userId },
+    orderBy: { scrapedAt: "desc" },
+  })
+
+  if (!snapshot) return NextResponse.json({ error: "No grades data found" }, { status: 404 })
+  return NextResponse.json(snapshot)
+}
+
+export async function POST(req: NextRequest) {
+  const userId = await resolveUserId(req)
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const contentLength = Number(req.headers.get("content-length") ?? 0)
   if (contentLength > MAX_BODY_BYTES) {
@@ -48,50 +40,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
   }
 
-  if (
-    !body.metadata || typeof body.metadata !== "object" ||
-    !Array.isArray(body.courses)
-  ) {
+  if (!body.metadata || typeof body.metadata !== "object" || !Array.isArray(body.courses)) {
     return NextResponse.json({ error: "Invalid grades.json format" }, { status: 400 })
   }
 
   const metadata = body.metadata as Record<string, unknown>
-  const courses  = body.courses as Array<Record<string, unknown>>
+  const courses  = body.courses  as Array<Record<string, unknown>>
 
   const scrapedAt = typeof metadata.scraped_at === "string" && !isNaN(Date.parse(metadata.scraped_at))
-    ? metadata.scraped_at
-    : new Date().toISOString()
+    ? new Date(metadata.scraped_at)
+    : new Date()
 
-  const { data: snapshot, error: snapErr } = await supabase
-    .from("grades_snapshots")
-    .insert({
-      user_id:    user.id,
-      scraped_at: scrapedAt,
-      term:       typeof metadata.term === "string" ? metadata.term : null,
-      raw_json:   body,
+  const snapshot = await prisma.gradesSnapshot.create({
+    data: {
+      userId,
+      scrapedAt,
+      term:    typeof metadata.term === "string" ? metadata.term : null,
+      rawJson: body,
+    },
+    select: { id: true },
+  })
+
+  if (courses.length > 0) {
+    await prisma.course.createMany({
+      data: courses.map((c) => ({
+        userId,
+        snapshotId:        snapshot.id,
+        courseCode:        String(c.id ?? ""),
+        name:              String(c.name ?? ""),
+        instructor:        c.instructor  ? String(c.instructor)  : null,
+        credits:           c.credits    != null ? Number(c.credits)    : null,
+        currentGrade:      c.current_grade     ? String(c.current_grade)     : null,
+        currentPercentage: c.current_percentage != null ? Number(c.current_percentage) : null,
+        term:              typeof metadata.term === "string" ? metadata.term : null,
+      })),
     })
-    .select("id")
-    .single()
-
-  if (snapErr) {
-    return NextResponse.json({ error: "Failed to save snapshot" }, { status: 500 })
   }
 
-  const courseRows = courses.map((c) => ({
-    user_id:            user.id,
-    snapshot_id:        snapshot.id,
-    course_code:        String(c.id ?? ""),
-    name:               String(c.name ?? ""),
-    instructor:         c.instructor ? String(c.instructor) : null,
-    credits:            c.credits != null ? Number(c.credits) : null,
-    current_grade:      c.current_grade ? String(c.current_grade) : null,
-    current_percentage: c.current_percentage != null ? Number(c.current_percentage) : null,
-    term:               typeof metadata.term === "string" ? metadata.term : null,
-  }))
-
-  if (courseRows.length > 0) {
-    await supabase.from("courses").insert(courseRows)
-  }
-
-  return NextResponse.json({ id: snapshot.id, courses: courseRows.length })
+  return NextResponse.json({ id: snapshot.id, courses: courses.length })
 }
