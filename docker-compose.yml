@@ -12,22 +12,19 @@ services:
       - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
       - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
       - KEYCLOAK_ADMIN_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
-      - AUTH_SECRET=${AUTH_SECRET}
-      - AUTH_URL=${AUTH_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
-      - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}
       - NOTION_CLIENT_ID=${NOTION_CLIENT_ID}
       - NOTION_CLIENT_SECRET=${NOTION_CLIENT_SECRET}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - PAYSERA_PROJECT_ID=${PAYSERA_PROJECT_ID}
       - PAYSERA_SIGN_PASSWORD=${PAYSERA_SIGN_PASSWORD}
-      - TOTP_ENCRYPTION_KEY=${TOTP_ENCRYPTION_KEY}
-      - PASSKEY_HMAC_SECRET=${PASSKEY_HMAC_SECRET}
-      - NEXT_PUBLIC_WEBAUTHN_RP_ID=${NEXT_PUBLIC_WEBAUTHN_RP_ID}
-      - NEXT_PUBLIC_WEBAUTHN_ORIGIN=${NEXT_PUBLIC_WEBAUTHN_ORIGIN}
     networks:
       - mdienynas-internal
       - traefik-public
@@ -38,22 +35,6 @@ services:
       - "traefik.http.routers.web.entrypoints=websecure"
       - "traefik.http.routers.web.tls.certresolver=letsencrypt"
       - "traefik.http.services.web.loadbalancer.server.port=3000"
-
-  migrator:
-    build:
-      context: ./web-app
-      dockerfile: Dockerfile
-      target: builder
-    command: npx prisma migrate deploy
-    environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@app-db:5432/${DB_NAME}
-    depends_on:
-      - app-db
-    networks:
-      - mdienynas-internal
-    profiles:
-      - migrate
-    restart: "no"
 
   app-db:
     image: postgres:16
