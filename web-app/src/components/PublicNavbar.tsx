@@ -58,7 +58,7 @@ export function PublicNavbar() {
         <ThemeToggle />
 
         <Link
-          href="/api/auth/signin"
+          href="/login"
           className="text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
           style={{ color: "var(--fg-muted)" }}
         >
@@ -66,7 +66,7 @@ export function PublicNavbar() {
         </Link>
 
         <Link
-          href="/api/auth/signin"
+          href="/register"
           className="text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors"
           style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
         >
