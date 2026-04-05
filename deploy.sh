@@ -1,9 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "==> Pulling latest code..."
-git pull
-
 echo "==> Building web image (using cache)..."
 docker compose build web
 
