@@ -1,13 +1,12 @@
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { LayoutDashboard, TrendingUp, CalendarDays, Plug, CheckCircle, Sparkles } from "lucide-react"
 import { PublicNavbar } from "@/components/PublicNavbar"
 
 export default async function HomePage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) redirect("/dashboard")
+  const session = await auth()
+  if (session) redirect("/dashboard")
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--fg)" }}>
@@ -45,14 +44,14 @@ export default async function HomePage() {
 
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <Link
-            href="/register"
+            href="/api/auth/signin"
             className="px-6 py-3 font-semibold rounded-xl text-sm transition-colors"
             style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
           >
             Get started — it&apos;s free
           </Link>
           <Link
-            href="/login"
+            href="/api/auth/signin"
             className="px-6 py-3 rounded-xl text-sm transition-colors"
             style={{ border: "1px solid var(--bdr)", color: "var(--fg-muted)" }}
           >
@@ -182,7 +181,7 @@ export default async function HomePage() {
               ))}
             </ul>
             <Link
-              href="/register"
+              href="/api/auth/signin"
               className="block text-center px-5 py-3 rounded-xl text-sm font-semibold transition-colors"
               style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
             >
@@ -254,7 +253,7 @@ export default async function HomePage() {
           Setup takes two minutes. You&apos;ll need your Mano Dienynas credentials.
         </p>
         <Link
-          href="/register"
+          href="/api/auth/signin"
           className="inline-block px-8 py-3 font-semibold rounded-xl text-sm transition-colors"
           style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
         >
@@ -269,10 +268,10 @@ export default async function HomePage() {
       >
         <span>© 2026 Dienynas SYNC</span>
         <div className="flex items-center gap-4">
-          <Link href="/login" className="hover:opacity-80 transition-opacity">
+          <Link href="/api/auth/signin" className="hover:opacity-80 transition-opacity">
             Sign in
           </Link>
-          <Link href="/register" className="hover:opacity-80 transition-opacity">
+          <Link href="/api/auth/signin" className="hover:opacity-80 transition-opacity">
             Register
           </Link>
         </div>

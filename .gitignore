@@ -3,6 +3,7 @@
 .env.local
 .env.*.local
 *.env
+acme.json
 # Keep the example template
 !.env.example
 
