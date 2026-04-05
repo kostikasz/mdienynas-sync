@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
       userId,
       generatedAt,
       source:  typeof body.source === "string" ? body.source : "upload",
-      rawJson: body,
+      rawJson: body as never,
     },
     select: { id: true },
   })
