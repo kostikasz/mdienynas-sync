@@ -5,7 +5,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
-      - app-db
+      app-db:
+        condition: service_healthy
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@app-db:5432/${DB_NAME}
       - KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER}
@@ -44,7 +45,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@app-db:5432/${DB_NAME}
     depends_on:
-      - app-db
+      app-db:
+        condition: service_healthy
     networks:
       - mdienynas-internal
     profiles:
@@ -62,13 +64,20 @@ services:
       - app-db-data:/var/lib/postgresql/data
     networks:
       - mdienynas-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   keycloak:
-    image: quay.io/keycloak/keycloak:latest
+    image: quay.io/keycloak/keycloak:26.2
     restart: unless-stopped
     command: ["start"]
     depends_on:
-      - keycloak-db
+      keycloak-db:
+        condition: service_healthy
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KC_DB_NAME}
@@ -101,6 +110,12 @@ services:
       - keycloak-db-data:/var/lib/postgresql/data
     networks:
       - mdienynas-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 networks:
   mdienynas-internal:
