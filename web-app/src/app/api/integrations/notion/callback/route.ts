@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 const NOTION_CLIENT_ID     = process.env.NOTION_CLIENT_ID     ?? ""
@@ -12,6 +13,11 @@ export async function GET(req: NextRequest) {
 
   if (errParam || !code || !userId) {
     return NextResponse.redirect(new URL("/integrations?error=notion_denied", origin))
+  }
+
+  const session = await auth()
+  if (!session || session.user.id !== userId) {
+    return NextResponse.redirect(new URL("/integrations?error=notion_unauthorized", origin))
   }
 
   const credentials = Buffer.from(`${NOTION_CLIENT_ID}:${NOTION_CLIENT_SECRET}`).toString("base64")

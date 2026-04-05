@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 const CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     ?? ""
@@ -12,6 +13,11 @@ export async function GET(req: NextRequest) {
 
   if (errParam || !code || !userId) {
     return NextResponse.redirect(new URL("/integrations?error=gcal_denied", origin))
+  }
+
+  const session = await auth()
+  if (!session || session.user.id !== userId) {
+    return NextResponse.redirect(new URL("/integrations?error=gcal_unauthorized", origin))
   }
 
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
