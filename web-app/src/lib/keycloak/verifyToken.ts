@@ -1,9 +1,11 @@
 import { createRemoteJWKSet, jwtVerify } from "jose"
-import type { JWTPayload, RemoteJWKSet } from "jose"
+import type { JWTPayload } from "jose"
 
-let _jwks: RemoteJWKSet | null = null
+type JWKS = ReturnType<typeof createRemoteJWKSet>
 
-function getJWKS(): RemoteJWKSet {
+let _jwks: JWKS | null = null
+
+function getJWKS(): JWKS {
   if (!_jwks) {
     _jwks = createRemoteJWKSet(
       new URL(`${process.env.KEYCLOAK_ISSUER}/protocol/openid-connect/certs`)
