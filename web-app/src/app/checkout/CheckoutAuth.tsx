@@ -1,12 +1,14 @@
 "use client"
 
-import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 
 export function CheckoutAuth() {
+  const router = useRouter()
+
   useEffect(() => {
-    signIn("keycloak", { callbackUrl: "/checkout/payment" })
-  }, [])
+    router.push("/login?callbackUrl=/checkout/payment")
+  }, [router])
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>
