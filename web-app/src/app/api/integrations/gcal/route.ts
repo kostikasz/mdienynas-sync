@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
 
   let created = 0
   let skipped = 0
+  let failed  = 0
 
   for (const course of grades.courses ?? []) {
     for (const assignment of course.assignments ?? []) {
@@ -102,19 +103,28 @@ export async function POST(req: NextRequest) {
         assignment.status ? `Status: ${assignment.status}` : null,
       ].filter(Boolean).join("\n")
 
-      await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
+      const eventRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
         method:  "POST",
         headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body:    JSON.stringify({ summary, description, start: { date: startDate }, end: { date: startDate } }),
       })
-      created++
+      if (eventRes.ok) {
+        created++
+      } else {
+        failed++
+      }
     }
   }
 
-  await prisma.integration.update({
-    where: { userId_provider: { userId: session.user.id, provider: "google_calendar" } },
-    data:  { lastSyncedAt: new Date() },
-  })
+  if (failed === 0) {
+    await prisma.integration.update({
+      where: { userId_provider: { userId: session.user.id, provider: "google_calendar" } },
+      data:  { lastSyncedAt: new Date() },
+    })
+  }
 
+  if (failed > 0) {
+    return NextResponse.json({ ok: false, created, skipped, failed }, { status: 207 })
+  }
   return NextResponse.json({ ok: true, created, skipped })
 }

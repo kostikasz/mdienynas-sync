@@ -69,6 +69,7 @@ export async function POST() {
   }
 
   let synced = 0
+  let failed = 0
   for (const course of grades.courses ?? []) {
     const properties: Record<string, unknown> = {
       "Course Name": { title: [{ text: { content: course.name ?? course.id ?? "Unknown" } }] },
@@ -79,17 +80,26 @@ export async function POST() {
     if (grades.term)               properties["Term"]        = { select: { name: grades.term } }
     properties["Last Updated"] = { date: { start: new Date().toISOString().slice(0, 10) } }
 
-    await fetch("https://api.notion.com/v1/pages", {
+    const pageRes = await fetch("https://api.notion.com/v1/pages", {
       method: "POST", headers,
       body:   JSON.stringify({ parent: { database_id: databaseId }, properties }),
     })
-    synced++
+    if (pageRes.ok) {
+      synced++
+    } else {
+      failed++
+    }
   }
 
-  await prisma.integration.update({
-    where: { userId_provider: { userId: session.user.id, provider: "notion" } },
-    data:  { lastSyncedAt: new Date() },
-  })
+  if (failed === 0) {
+    await prisma.integration.update({
+      where: { userId_provider: { userId: session.user.id, provider: "notion" } },
+      data:  { lastSyncedAt: new Date() },
+    })
+  }
 
+  if (failed > 0) {
+    return NextResponse.json({ ok: false, synced, failed }, { status: 207 })
+  }
   return NextResponse.json({ ok: true, synced })
 }
