@@ -125,7 +125,7 @@ export async function POST() {
   })
   if (!snapshot?.rawJson) return NextResponse.json({ error: "No grades data available" }, { status: 400 })
 
-  const gradesSummary = buildGradesSummary(snapshot.rawJson as unknown as GradesSnapshot)
+  const gradesSummary = buildGradesSummary(snapshot.rawJson as GradesSnapshot)
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   let claudeResponse: Anthropic.Message
