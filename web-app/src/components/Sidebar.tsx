@@ -13,9 +13,8 @@ import {
   LogOut,
 } from "lucide-react"
 
-import { createClient } from "@/lib/supabase/client"
+import { useSession, signOut } from "next-auth/react"
 import { hasRole } from "@/lib/roles"
-import { useRouter } from "next/navigation"
 import { ThemeToggle } from "./ThemeToggle"
 
 const NAV = [
@@ -28,19 +27,13 @@ const NAV = [
 
 export default function Sidebar() {
   const pathname = usePathname()
-  const router   = useRouter()
 
-  const [user,     setUser]     = useState<{ email: string } | null>(null)
-  const [isAdmin,  setIsAdmin]  = useState(false)
+  const { data: session } = useSession()
+  const user    = session?.user ?? null
+  const isAdmin = hasRole(session?.user?.roles ?? [], "ADMIN")
+
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    createClient().auth.getUser().then(({ data }) => {
-      if (data.user?.email) setUser({ email: data.user.email })
-      if (data.user) setIsAdmin(hasRole(data.user, "ADMIN"))
-    })
-  }, [])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -54,9 +47,7 @@ export default function Sidebar() {
   }, [menuOpen])
 
   async function handleLogout() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push("/login")
+    await signOut({ callbackUrl: "/" })
   }
 
   return (
