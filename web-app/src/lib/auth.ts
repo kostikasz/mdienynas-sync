@@ -1,15 +1,12 @@
 import NextAuth from "next-auth"
-import Keycloak from "next-auth/providers/keycloak"
 import Credentials from "next-auth/providers/credentials"
+import { authConfig } from "@/lib/auth.config"
 import { prisma } from "@/lib/prisma"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
-    Keycloak({
-      clientId:     process.env.KEYCLOAK_CLIENT_ID!,
-      clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
-      issuer:       process.env.KEYCLOAK_ISSUER!,
-    }),
+    ...authConfig.providers,
     Credentials({
       credentials: {
         email:    { label: "Email",    type: "email"    },
@@ -55,10 +52,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  pages: {
-    signIn: "/login",
-  },
-  session: { strategy: "jwt" },
   callbacks: {
     async jwt({ token, user, account, profile }) {
       if (account?.type === "credentials" && user) {
@@ -75,11 +68,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const sub   = profile.sub as string
         const email = profile.email as string
-        await prisma.user.upsert({
-          where:  { id: sub },
-          update: { email },
-          create: { id: sub, email },
-        })
+
+        try {
+          await prisma.user.upsert({
+            where:  { id: sub },
+            update: { email },
+            create: { id: sub, email },
+          })
+        } catch (e: unknown) {
+          // P2002: email unique constraint — a DB user already exists with this email
+          // under a different Keycloak sub (e.g. email/password account vs Google account).
+          // Use the existing record's ID so the user's data remains accessible.
+          if ((e as { code?: string })?.code === "P2002") {
+            const existing = await prisma.user.findUnique({ where: { email } })
+            if (existing) token.sub = existing.id
+          } else {
+            throw e
+          }
+        }
       }
       return token
     },
