@@ -1,7 +1,7 @@
 import type { GradesJson, HomeworkJson } from "./types"
 
 // Replace with your Vercel URL (or http://localhost:3000 for local dev)
-const WEBAPP_URL = "http://localhost:3000"
+const WEBAPP_URL = "https://mdienynas.kostikas.cloud"
 
 export async function uploadGrades(
   json: GradesJson,
