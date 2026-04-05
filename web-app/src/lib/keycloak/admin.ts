@@ -45,10 +45,9 @@ export async function createUser(email: string, password: string): Promise<{ id:
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body:    JSON.stringify({
       email,
-      username:         email,
-      enabled:          true,
-      emailVerified:    true,
-      credentials:      [{ type: "password", value: password, temporary: false }],
+      username:    email,
+      enabled:     true,
+      credentials: [{ type: "password", value: password, temporary: false }],
     }),
   })
   if (!res.ok) {
@@ -127,95 +126,4 @@ export async function removeRealmRole(userId: string, role: string): Promise<voi
     body:    JSON.stringify([roleRep]),
   })
   if (!res.ok) throw new Error(`removeRealmRole failed: ${res.status}`)
-}
-
-// ─── Credentials ──────────────────────────────────────────────────────────────
-
-export interface KcCredential {
-  id:          string
-  type:        string
-  userLabel:   string | null
-  createdDate: number
-}
-
-export async function listCredentials(userId: string): Promise<KcCredential[]> {
-  const token = await getAdminToken()
-  const res   = await fetch(`${adminBase()}/users/${userId}/credentials`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) throw new Error(`listCredentials failed: ${res.status}`)
-  return res.json()
-}
-
-export async function deleteCredential(userId: string, credentialId: string): Promise<void> {
-  const token = await getAdminToken()
-  const res   = await fetch(`${adminBase()}/users/${userId}/credentials/${credentialId}`, {
-    method:  "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) throw new Error(`deleteCredential failed: ${res.status}`)
-}
-
-export async function createOtpCredential(
-  userId: string,
-  secret: string,
-  label:  string,
-): Promise<void> {
-  const token   = await getAdminToken()
-  const secretData = JSON.stringify({
-    value:                secret,
-    digits:               6,
-    counterLookAheadWindow: 1,
-    period:               30,
-    algorithm:            "HmacSHA1",
-  })
-  const credentialData = JSON.stringify({
-    subType:   "totp",
-    digits:    6,
-    period:    30,
-    algorithm: "HmacSHA1",
-    otpType:   "totp",
-  })
-  const res = await fetch(`${adminBase()}/users/${userId}/credentials`, {
-    method:  "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body:    JSON.stringify({ type: "otp", userLabel: label, secretData, credentialData }),
-  })
-  if (!res.ok) throw new Error(`createOtpCredential failed: ${res.status}`)
-}
-
-export async function resetPassword(userId: string, newPassword: string): Promise<void> {
-  const token = await getAdminToken()
-  const res   = await fetch(`${adminBase()}/users/${userId}/reset-password`, {
-    method:  "PUT",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body:    JSON.stringify({ type: "password", value: newPassword, temporary: false }),
-  })
-  if (!res.ok) throw new Error(`resetPassword failed: ${res.status}`)
-}
-
-// ─── Federated identities ──────────────────────────────────────────────────────
-
-export interface KcFederatedIdentity {
-  identityProvider: string
-  userId:           string
-  userName:         string
-}
-
-export async function listFederatedIdentities(userId: string): Promise<KcFederatedIdentity[]> {
-  const token = await getAdminToken()
-  const res   = await fetch(`${adminBase()}/users/${userId}/federated-identity`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) return []
-  return res.json()
-}
-
-export async function removeFederatedIdentity(userId: string, provider: string): Promise<void> {
-  const token = await getAdminToken()
-  const res   = await fetch(`${adminBase()}/users/${userId}/federated-identity/${provider}`, {
-    method:  "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) throw new Error(`removeFederatedIdentity failed: ${res.status}`)
 }
