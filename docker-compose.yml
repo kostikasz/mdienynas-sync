@@ -35,6 +35,22 @@ services:
       - "traefik.http.routers.web.tls.certresolver=letsencrypt"
       - "traefik.http.services.web.loadbalancer.server.port=3000"
 
+  migrator:
+    build:
+      context: ./web-app
+      dockerfile: Dockerfile
+      target: builder
+    command: npx prisma migrate deploy
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@app-db:5432/${DB_NAME}
+    depends_on:
+      - app-db
+    networks:
+      - mdienynas-internal
+    profiles:
+      - migrate
+    restart: "no"
+
   app-db:
     image: postgres:16
     restart: unless-stopped
