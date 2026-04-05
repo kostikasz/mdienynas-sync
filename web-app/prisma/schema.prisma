@@ -11,16 +11,13 @@ model User {
   email     String   @unique
   createdAt DateTime @default(now()) @map("created_at")
 
-  gradesSnapshots    GradesSnapshot[]
-  homeworkSnapshots  HomeworkSnapshot[]
-  integrations       Integration[]
-  subscription       Subscription?
-  payments           Payment[]
-  aiUsage            AiOverviewUsage[]
-  courses            Course[]
-  passkeys           Passkey[]
-  totpCredential     TotpCredential?
-  webAuthnChallenges WebAuthnChallenge[]
+  gradesSnapshots   GradesSnapshot[]
+  homeworkSnapshots HomeworkSnapshot[]
+  integrations      Integration[]
+  subscription      Subscription?
+  payments          Payment[]
+  aiUsage           AiOverviewUsage[]
+  courses           Course[]
 
   @@map("users")
 }
@@ -135,47 +132,4 @@ model AiOverviewUsage {
   @@index([userId])
   @@index([usedAt])
   @@map("ai_overview_usage")
-}
-
-model Passkey {
-  id           String   @id @default(uuid())
-  credentialId String   @unique @map("credential_id")
-  publicKey    Bytes    @map("public_key")
-  counter      BigInt   @default(0)
-  transports   String[]
-  name         String   @default("Passkey")
-  userId       String   @map("user_id")
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("passkeys")
-}
-
-model TotpCredential {
-  id              String    @id @default(uuid())
-  userId          String    @unique @map("user_id")
-  encryptedSecret String    @map("encrypted_secret")
-  label           String    @default("Authenticator App")
-  failedAttempts  Int       @default(0) @map("failed_attempts")
-  lockedUntil     DateTime? @map("locked_until")
-  createdAt       DateTime  @default(now()) @map("created_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("totp_credentials")
-}
-
-model WebAuthnChallenge {
-  id        String   @id @default(uuid())
-  challenge String   @unique
-  userId    String?  @map("user_id")
-  email     String?
-  expiresAt DateTime @map("expires_at")
-
-  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([expiresAt])
-  @@map("webauthn_challenges")
 }
