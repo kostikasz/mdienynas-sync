@@ -1,21 +1,12 @@
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import type { JWTPayload } from "jose"
 
-type JWKS = ReturnType<typeof createRemoteJWKSet>
-
-let _jwks: JWKS | null = null
-
-function getJWKS(): JWKS {
-  if (!_jwks) {
-    _jwks = createRemoteJWKSet(
-      new URL(`${process.env.KEYCLOAK_ISSUER}/protocol/openid-connect/certs`)
-    )
-  }
-  return _jwks
-}
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.KEYCLOAK_ISSUER}/protocol/openid-connect/certs`)
+)
 
 export async function verifyKeycloakToken(jwt: string): Promise<JWTPayload> {
-  const { payload } = await jwtVerify(jwt, getJWKS(), {
+  const { payload } = await jwtVerify(jwt, JWKS, {
     issuer:   process.env.KEYCLOAK_ISSUER,
     audience: "account",
   })
