@@ -5,7 +5,7 @@ import SecurityClient from "./SecurityClient"
 
 export default async function SecurityPage() {
   const session = await auth()
-  if (!session) redirect("/login")
+  if (!session) redirect("/api/auth/signin")
 
   return (
     <AppShell>
