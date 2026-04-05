@@ -2,9 +2,7 @@
 
 import { ExternalLink } from "lucide-react"
 
-export default function SecurityClient() {
-  const keycloakAccountUrl = `${process.env.NEXT_PUBLIC_KEYCLOAK_ISSUER?.replace("/realms/", "/realms/")}/account`
-
+export default function SecurityClient({ accountUrl }: { accountUrl: string }) {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-2" style={{ color: "var(--fg)" }}>Security</h1>
@@ -21,7 +19,7 @@ export default function SecurityClient() {
           Change your password, add passkeys, and configure two-factor authentication in the Keycloak account console.
         </p>
         <a
-          href={keycloakAccountUrl}
+          href={accountUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
