@@ -1,27 +1,24 @@
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
+import { prisma } from "@/lib/prisma"
 import AppShell from "@/components/AppShell"
 import CalendarClient from "./CalendarClient"
 import type { HomeworkData } from "@/types/homework"
 
 export default async function CalendarPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/login")
+  const session = await auth()
+  if (!session) redirect("/api/auth/signin")
 
-  const { data: snapshot } = await supabase
-    .from("homework_snapshots")
-    .select("raw_json, generated_at")
-    .eq("user_id", user.id)
-    .order("generated_at", { ascending: false })
-    .limit(1)
-    .single()
+  const snapshot = await prisma.homeworkSnapshot.findFirst({
+    where:   { userId: session.user.id },
+    orderBy: { generatedAt: "desc" },
+  })
 
-  const homework = snapshot?.raw_json as HomeworkData | null
+  const homework = snapshot?.rawJson as HomeworkData | null
 
   return (
     <AppShell>
-      <CalendarClient homework={homework} generatedAt={snapshot?.generated_at ?? null} />
+      <CalendarClient homework={homework} generatedAt={snapshot?.generatedAt?.toISOString() ?? null} />
     </AppShell>
   )
 }

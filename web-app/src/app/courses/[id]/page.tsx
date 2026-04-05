@@ -1,5 +1,6 @@
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@/lib/auth"
 import { redirect, notFound } from "next/navigation"
+import { prisma } from "@/lib/prisma"
 import AppShell from "@/components/AppShell"
 import type { GradesSnapshot } from "@/types/grades"
 import {
@@ -20,19 +21,15 @@ export default async function CoursePage({ params }: Props) {
   const { id } = await params
   const courseId = decodeURIComponent(id)
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/login")
+  const session = await auth()
+  if (!session) redirect("/api/auth/signin")
 
-  const { data: snapshot } = await supabase
-    .from("grades_snapshots")
-    .select("raw_json")
-    .eq("user_id", user.id)
-    .order("scraped_at", { ascending: false })
-    .limit(1)
-    .single()
+  const snapshot = await prisma.gradesSnapshot.findFirst({
+    where:   { userId: session.user.id },
+    orderBy: { scrapedAt: "desc" },
+  })
 
-  const grades = snapshot?.raw_json as GradesSnapshot | null
+  const grades = snapshot?.rawJson as GradesSnapshot | null
   const course = grades?.courses.find((c) => c.id === courseId)
   if (!course) notFound()
 

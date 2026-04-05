@@ -1,24 +1,24 @@
+import { auth } from "@/lib/auth"
+import { redirect } from "next/navigation"
+import { prisma } from "@/lib/prisma"
 import { Suspense } from "react"
 import AppShell from "@/components/AppShell"
 import IntegrationsClient from "./IntegrationsClient"
-import { createClient } from "@/lib/supabase/server"
-import { redirect } from "next/navigation"
 
 export default async function IntegrationsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/login")
+  const session = await auth()
+  if (!session) redirect("/api/auth/signin")
 
-  const { data: integrations } = await supabase
-    .from("integrations")
-    .select("provider, last_synced_at, connected_at, metadata")
-    .eq("user_id", user.id)
+  const rows = await prisma.integration.findMany({
+    where:  { userId: session.user.id },
+    select: { provider: true, lastSyncedAt: true, connectedAt: true, metadata: true },
+  })
 
   const connected: Record<string, { last_synced_at: string | null; connected_at: string | null; metadata: Record<string, string> | null }> = {}
-  for (const row of integrations ?? []) {
+  for (const row of rows) {
     connected[row.provider] = {
-      last_synced_at: row.last_synced_at,
-      connected_at:   row.connected_at,
+      last_synced_at: row.lastSyncedAt?.toISOString() ?? null,
+      connected_at:   row.connectedAt?.toISOString()  ?? null,
       metadata:       row.metadata as Record<string, string> | null,
     }
   }
