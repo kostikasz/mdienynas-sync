@@ -45,9 +45,10 @@ export async function createUser(email: string, password: string): Promise<{ id:
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body:    JSON.stringify({
       email,
-      username:    email,
-      enabled:     true,
-      credentials: [{ type: "password", value: password, temporary: false }],
+      username:         email,
+      enabled:          true,
+      emailVerified:    true,
+      credentials:      [{ type: "password", value: password, temporary: false }],
     }),
   })
   if (!res.ok) {

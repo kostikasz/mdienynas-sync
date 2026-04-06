@@ -47,7 +47,16 @@ export default function Sidebar() {
   }, [menuOpen])
 
   async function handleLogout() {
-    await signOut({ callbackUrl: "/" })
+    // Sign out of NextAuth and get the Keycloak end_session URL to also
+    // clear the Keycloak session — without this, OAuth re-login skips the
+    // provider redirect and silently reuses the existing Keycloak session.
+    const res = await fetch("/api/auth/logout", { method: "POST" })
+    if (res.ok) {
+      const { logoutUrl } = await res.json()
+      window.location.href = logoutUrl
+    } else {
+      await signOut({ callbackUrl: "/login" })
+    }
   }
 
   return (

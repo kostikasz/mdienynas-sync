@@ -19,7 +19,7 @@ export async function POST() {
     userName: session.user.email,
     userID: new TextEncoder().encode(session.user.id),
     attestationType: "none",
-    excludeCredentials: existingPasskeys.map((pk) => ({
+    excludeCredentials: existingPasskeys.map((pk: { credentialId: string; transports: string[] }) => ({
       id: pk.credentialId,
       transports: pk.transports as AuthenticatorTransportFuture[],
     })),

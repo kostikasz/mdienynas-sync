@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ShieldCheck, Lock, KeyRound } from "lucide-react"
+import { ShieldCheck, Lock, KeyRound, Fingerprint } from "lucide-react"
+import { startRegistration } from "@simplewebauthn/browser"
 
-type Section = "overview" | "mfa" | "password"
+type Section = "overview" | "mfa" | "password" | "passkeys"
 
 type TotpFactor = {
   id:          string
@@ -20,10 +21,18 @@ type TotpSetupState = {
 const STORAGE_KEY   = "totp_setup"
 const ENROLL_TTL_MS = 5 * 60 * 1000
 
+type PasskeyItem = {
+  id:         string
+  name:       string
+  createdAt:  string
+  transports: string[]
+}
+
 const SECTIONS: { id: Section; label: string; icon: React.ElementType }[] = [
-  { id: "overview", label: "Overview",                   icon: ShieldCheck },
-  { id: "mfa",      label: "Multi-factor authentication", icon: Lock },
-  { id: "password", label: "Change password",             icon: KeyRound },
+  { id: "overview",  label: "Overview",                   icon: ShieldCheck },
+  { id: "mfa",       label: "Multi-factor authentication", icon: Lock },
+  { id: "passkeys",  label: "Passkeys",                   icon: Fingerprint },
+  { id: "password",  label: "Change password",             icon: KeyRound },
 ]
 
 export default function SecurityClient() {
@@ -44,6 +53,13 @@ export default function SecurityClient() {
   const [cpLoading,    setCpLoading]    = useState(false)
   const [cpError,      setCpError]      = useState<string | null>(null)
 
+  const [passkeys,        setPasskeys]        = useState<PasskeyItem[]>([])
+  const [loadingPasskeys, setLoadingPasskeys] = useState(true)
+  const [pkName,          setPkName]          = useState("")
+  const [pkLoading,       setPkLoading]       = useState(false)
+  const [pkError,         setPkError]         = useState<string | null>(null)
+  const [removingPkId,    setRemovingPkId]    = useState<string | null>(null)
+
   const [successMsg,   setSuccessMsg]   = useState<string | null>(null)
 
   function flash(msg: string) {
@@ -61,8 +77,19 @@ export default function SecurityClient() {
     setLoadingMfa(false)
   }
 
+  async function loadPasskeys() {
+    setLoadingPasskeys(true)
+    const res = await fetch("/api/auth/passkey/list")
+    if (res.ok) {
+      const data = await res.json()
+      setPasskeys(data.passkeys ?? [])
+    }
+    setLoadingPasskeys(false)
+  }
+
   useEffect(() => {
     loadMfa()
+    loadPasskeys()
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (raw) {
       try {
@@ -127,6 +154,47 @@ export default function SecurityClient() {
     setRemovingId(null)
   }
 
+  // ── Passkeys ───────────────────────────────────────────────────────────────
+
+  async function registerPasskey(e: React.FormEvent) {
+    e.preventDefault()
+    setPkError(null)
+    setPkLoading(true)
+    try {
+      const optRes = await fetch("/api/auth/passkey/register/options", { method: "POST" })
+      if (!optRes.ok) throw new Error("Failed to get registration options")
+      const options = await optRes.json()
+
+      const regResponse = await startRegistration({ optionsJSON: options })
+
+      const verRes = await fetch("/api/auth/passkey/register/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ response: regResponse, name: pkName || "Passkey" }),
+      })
+      if (!verRes.ok) throw new Error("Registration verification failed")
+
+      setPkName("")
+      flash("Passkey added successfully.")
+      loadPasskeys()
+    } catch {
+      setPkError("Failed to register passkey. Make sure your device supports passkeys and try again.")
+    } finally {
+      setPkLoading(false)
+    }
+  }
+
+  async function removePasskey(id: string) {
+    setRemovingPkId(id)
+    const res = await fetch("/api/auth/passkey/remove", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    })
+    if (res.ok) { flash("Passkey removed."); loadPasskeys() }
+    setRemovingPkId(null)
+  }
+
   // ── Password ───────────────────────────────────────────────────────────────
 
   async function changePassword(e: React.FormEvent) {
@@ -150,7 +218,8 @@ export default function SecurityClient() {
     setCpLoading(false)
   }
 
-  const hasTotp = totpFactors.length > 0
+  const hasTotp      = totpFactors.length > 0
+  const hasPasskeys  = passkeys.length > 0
 
   return (
     <div className="flex min-h-full">
@@ -203,6 +272,21 @@ export default function SecurityClient() {
                 }`}>
                   {hasTotp ? "Enabled" : "Disabled"}
                 </span>
+              </div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium" style={{ color: "var(--fg)" }}>Passkeys</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--fg-muted)" }}>
+                    {loadingPasskeys ? "Loading…" : hasPasskeys ? `${passkeys.length} passkey${passkeys.length > 1 ? "s" : ""} registered` : "No passkeys registered"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveSection("passkeys")}
+                  className="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors"
+                  style={{ background: "var(--surface-2)", border: "1px solid var(--bdr)", color: "var(--fg-muted)" }}
+                >
+                  Manage
+                </button>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
                 <div>
@@ -348,6 +432,83 @@ export default function SecurityClient() {
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Passkeys */}
+        {activeSection === "passkeys" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-xl font-bold" style={{ color: "var(--fg)" }}>Passkeys</h1>
+              <p className="text-sm mt-1" style={{ color: "var(--fg-muted)" }}>
+                Sign in without a password using your device&apos;s biometrics or a security key.
+              </p>
+            </div>
+
+            {/* Existing passkeys */}
+            {!loadingPasskeys && passkeys.length > 0 && (
+              <ul className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl divide-y divide-[var(--bdr)]">
+                {passkeys.map((pk) => (
+                  <li key={pk.id} className="flex items-center justify-between px-4 py-3 gap-4">
+                    <div className="flex items-center gap-3">
+                      <Fingerprint className="w-4 h-4 shrink-0" style={{ color: "var(--accent)" }} />
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--fg)" }}>{pk.name}</p>
+                        <p className="text-xs" style={{ color: "var(--fg-muted)" }}>
+                          Added {new Date(pk.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                          {pk.transports.length > 0 && ` · ${pk.transports.join(", ")}`}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removePasskey(pk.id)}
+                      disabled={removingPkId === pk.id}
+                      className="shrink-0 text-xs text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors px-2 py-1 rounded hover:bg-red-500/10"
+                    >
+                      {removingPkId === pk.id ? "Removing…" : "Remove"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {loadingPasskeys && (
+              <p className="text-sm" style={{ color: "var(--fg-muted)" }}>Loading…</p>
+            )}
+
+            {/* Register new passkey */}
+            <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl p-5">
+              <p className="text-sm mb-4" style={{ color: "var(--fg-muted)" }}>
+                {passkeys.length > 0
+                  ? "Add another passkey as a backup (e.g. a security key or another device)."
+                  : "Add a passkey to sign in with Face ID, Touch ID, Windows Hello, or a security key."}
+              </p>
+              <form onSubmit={registerPasskey} className="space-y-3">
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: "var(--fg-muted)" }}>Nickname (optional)</label>
+                  <input
+                    type="text"
+                    value={pkName}
+                    onChange={(e) => setPkName(e.target.value)}
+                    maxLength={60}
+                    className="w-full bg-[var(--input-bg)] border border-[var(--bdr)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--input-focus)] transition-colors"
+                    style={{ color: "var(--fg)" }}
+                    placeholder="e.g. MacBook Touch ID"
+                  />
+                </div>
+                {pkError && (
+                  <p className="text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2" style={{ color: "#dc2626" }}>{pkError}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={pkLoading}
+                  className="font-medium rounded-lg px-4 py-2.5 text-sm transition-colors disabled:opacity-50"
+                  style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
+                >
+                  {pkLoading ? "Registering…" : "Add passkey"}
+                </button>
+              </form>
+            </div>
           </div>
         )}
 

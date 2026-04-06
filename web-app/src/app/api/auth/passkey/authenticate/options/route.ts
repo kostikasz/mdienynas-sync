@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const options = await generateAuthenticationOptions({
     rpID: rpId,
     userVerification: "preferred",
-    allowCredentials: userPasskeys.map((pk) => ({
+    allowCredentials: userPasskeys.map((pk: { credentialId: string; transports: string[] }) => ({
       id: pk.credentialId,
       transports: pk.transports as AuthenticatorTransportFuture[],
     })),

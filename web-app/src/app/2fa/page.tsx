@@ -103,8 +103,14 @@ function TwoFactorForm() {
   }
 
   async function handleBackToLogin() {
-    await signOut({ redirect: false })
-    router.push("/login")
+    const res = await fetch("/api/auth/logout", { method: "POST" })
+    if (res.ok) {
+      const { logoutUrl } = await res.json()
+      window.location.href = logoutUrl
+    } else {
+      await signOut({ redirect: false })
+      router.push("/login")
+    }
   }
 
   // Format countdown as M:SS
