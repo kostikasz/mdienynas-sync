@@ -7,15 +7,18 @@ import { signIn } from "next-auth/react"
 import { Suspense } from "react"
 import { PublicNavbar } from "@/components/PublicNavbar"
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile"
+import { startAuthentication } from "@simplewebauthn/browser"
 
 function LoginForm() {
   const searchParams = useSearchParams()
   const router       = useRouter()
 
-  const [email,        setEmail]        = useState("")
-  const [password,     setPassword]     = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [error,        setError]        = useState<string | null>(
+  const [email,          setEmail]          = useState("")
+  const [password,       setPassword]       = useState("")
+  const [showPassword,   setShowPassword]   = useState(false)
+  const [hasPasskey,     setHasPasskey]     = useState(false)
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
+  const [error,          setError]          = useState<string | null>(
     searchParams.get("error") === "oauth" ? "OAuth sign-in failed. Please try again." : null
   )
   const [loading,        setLoading]        = useState<"email" | "google" | "discord" | null>(null)
@@ -27,6 +30,63 @@ function LoginForm() {
     const trimmed = email.trim()
     if (!trimmed || !trimmed.includes("@")) return
     setShowPassword(true)
+
+    // Check if email has a passkey registered
+    fetch(`/api/auth/passkey/check?email=${encodeURIComponent(trimmed)}`)
+      .then(res => res.json())
+      .then(data => setHasPasskey(data.hasPasskey))
+      .catch(() => setHasPasskey(false))
+  }
+
+  async function handlePasskeySignIn() {
+    setError(null)
+    setPasskeyLoading(true)
+
+    try {
+      // Get authentication options
+      const optionsRes = await fetch("/api/auth/passkey/authenticate/options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      if (!optionsRes.ok) throw new Error("Failed to get options")
+      const options = await optionsRes.json()
+
+      // Start WebAuthn ceremony
+      const authResponse = await startAuthentication({ optionsJSON: options })
+
+      // Verify with server
+      const verifyRes = await fetch("/api/auth/passkey/authenticate/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ response: authResponse, email: email.trim() }),
+      })
+      if (!verifyRes.ok) throw new Error("Verification failed")
+      const { passkeyToken } = await verifyRes.json()
+
+      // Sign in with NextAuth using the passkeyToken
+      const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard"
+      const result = await signIn("credentials", {
+        passkeyToken,
+        redirect: false,
+      })
+
+      if (result?.error) throw new Error("Sign-in failed")
+
+      // Check if MFA is pending — use getSession() (App Router pattern, not Pages Router fetch)
+      const { getSession } = await import("next-auth/react")
+      const updatedSession = await getSession()
+
+      if (updatedSession?.user?.mfaPending) {
+        router.push("/2fa")
+      } else {
+        router.push(callbackUrl)
+      }
+    } catch {
+      setError("Passkey sign-in failed. Try your password instead.")
+    } finally {
+      setPasskeyLoading(false)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -73,7 +133,15 @@ function LoginForm() {
       return
     }
 
-    router.push(callbackUrl)
+    // Check if MFA is pending — use getSession() (App Router pattern)
+    const { getSession } = await import("next-auth/react")
+    const updatedSession = await getSession()
+
+    if (updatedSession?.user?.mfaPending) {
+      router.push("/2fa")
+    } else {
+      router.push(callbackUrl)
+    }
   }
 
   async function handleOAuth(provider: "google" | "discord") {
@@ -84,7 +152,7 @@ function LoginForm() {
     await signIn("keycloak", { callbackUrl }, { kc_idp_hint: provider })
   }
 
-  const isDisabled = loading !== null
+  const isDisabled = loading !== null || passkeyLoading
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
@@ -162,6 +230,7 @@ function LoginForm() {
                   onChange={(e) => {
                     setEmail(e.target.value)
                     setShowPassword(false)
+                    setHasPasskey(false)
                   }}
                   onBlur={handleEmailBlur}
                   required
@@ -179,45 +248,66 @@ function LoginForm() {
                 />
               </div>
 
-              {/* Password */}
+              {/* Password + passkey button (shown after email blur) */}
               {showPassword && (
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1.5"
-                    style={{ color: "var(--fg-muted)" }}
-                  >
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    autoFocus
-                    disabled={isDisabled}
-                    className="w-full rounded-lg px-4 py-2.5 text-sm transition-colors disabled:opacity-70 outline-none"
-                    style={{
-                      background: "var(--input-bg)",
-                      border: "1px solid var(--input-bdr)",
-                      color: "var(--fg)",
-                    }}
-                    onFocus={(e) => (e.target.style.borderColor = "var(--input-focus)")}
-                    onBlurCapture={(e) => (e.target.style.borderColor = "var(--input-bdr)")}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                  />
-                </div>
-              )}
+                <>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1.5"
+                      style={{ color: "var(--fg-muted)" }}
+                    >
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      autoFocus
+                      disabled={isDisabled}
+                      className="w-full rounded-lg px-4 py-2.5 text-sm transition-colors disabled:opacity-70 outline-none"
+                      style={{
+                        background: "var(--input-bg)",
+                        border: "1px solid var(--input-bdr)",
+                        color: "var(--fg)",
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = "var(--input-focus)")}
+                      onBlurCapture={(e) => (e.target.style.borderColor = "var(--input-bdr)")}
+                      placeholder="••••••••"
+                      autoComplete="current-password"
+                    />
+                  </div>
 
-              {showPassword && (
-                <Turnstile
-                  ref={turnstileRef}
-                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-                  options={{ theme: "auto" }}
-                  onSuccess={(token) => setTurnstileToken(token)}
-                  onError={() => setTurnstileToken(null)}
-                  onExpire={() => setTurnstileToken(null)}
-                />
+                  {/* Passkey button — shown below password when email has a passkey */}
+                  {hasPasskey && (
+                    <button
+                      type="button"
+                      onClick={handlePasskeySignIn}
+                      disabled={isDisabled || passkeyLoading}
+                      className="w-full flex items-center justify-center gap-2 font-medium rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50"
+                      style={{
+                        background: "var(--surface-2)",
+                        border: "1px solid var(--bdr)",
+                        color: "var(--accent)",
+                      }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z" />
+                        <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" />
+                      </svg>
+                      {passkeyLoading ? "Verifying…" : "Sign in with passkey"}
+                    </button>
+                  )}
+
+                  <Turnstile
+                    ref={turnstileRef}
+                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                    options={{ theme: "auto" }}
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    onError={() => setTurnstileToken(null)}
+                    onExpire={() => setTurnstileToken(null)}
+                  />
+                </>
               )}
 
               {error && (
