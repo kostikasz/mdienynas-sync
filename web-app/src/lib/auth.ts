@@ -2,6 +2,8 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { authConfig } from "@/lib/auth.config"
 import { prisma } from "@/lib/prisma"
+import { verifyToken } from "@/lib/crypto"
+import { getUserRealmRoles, listCredentials } from "@/lib/keycloak/admin"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -9,10 +11,58 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.providers,
     Credentials({
       credentials: {
-        email:    { label: "Email",    type: "email"    },
-        password: { label: "Password", type: "password" },
+        email:            { label: "Email",            type: "email"    },
+        password:         { label: "Password",         type: "password" },
+        passkeyToken:     { label: "Passkey Token",     type: "text"     },
+        mfaCompleteToken: { label: "MFA Complete Token", type: "text"    },
       },
       async authorize(credentials) {
+        const passkeyToken     = credentials.passkeyToken     as string | undefined
+        const mfaCompleteToken = credentials.mfaCompleteToken as string | undefined
+
+        // ─── Case A: passkey login ─────────────────────────────────────────────
+        if (passkeyToken) {
+          const result = verifyToken(passkeyToken, "passkey-auth")
+          if (!result) return null
+
+          const user = await prisma.user.findUnique({ where: { id: result.userId } })
+          if (!user) return null
+
+          const totpCred = await prisma.totpCredential.findUnique({
+            where: { userId: result.userId },
+          })
+
+          const roles = await getUserRealmRoles(result.userId)
+          const filteredRoles = roles.filter((r) => r === "ADMIN" || r === "CLOUD")
+
+          return {
+            id:         user.id,
+            email:      user.email,
+            roles:      filteredRoles,
+            mfaPending: !!totpCred,
+          }
+        }
+
+        // ─── Case B: MFA complete (after TOTP success) ─────────────────────────
+        if (mfaCompleteToken) {
+          const result = verifyToken(mfaCompleteToken, "mfa-complete")
+          if (!result) return null
+
+          const user = await prisma.user.findUnique({ where: { id: result.userId } })
+          if (!user) return null
+
+          const roles = await getUserRealmRoles(result.userId)
+          const filteredRoles = roles.filter((r) => r === "ADMIN" || r === "CLOUD")
+
+          return {
+            id:         user.id,
+            email:      user.email,
+            roles:      filteredRoles,
+            mfaPending: false,
+          }
+        }
+
+        // ─── Case C: password login ────────────────────────────────────────────
         const res = await fetch(
           `${process.env.KEYCLOAK_ISSUER}/protocol/openid-connect/token`,
           {
@@ -48,16 +98,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           create: { id: sub, email },
         })
 
-        return { id: sub, email, roles }
+        // Check for TOTP credential in Prisma
+        const totpCred = await prisma.totpCredential.findUnique({ where: { userId: sub } })
+
+        let hasMfa = !!totpCred
+        if (!hasMfa) {
+          // Keycloak fallback: check for OTP credentials enrolled before TotpCredential was added
+          const kcCreds = await listCredentials(sub)
+          hasMfa = kcCreds.some((c) => c.type === "otp")
+        }
+
+        return { id: sub, email, roles, mfaPending: hasMfa }
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user, account, profile }) {
       if (account?.type === "credentials" && user) {
-        token.sub   = user.id
-        token.email = user.email ?? undefined
-        token.roles = (user as { roles: string[] }).roles
+        token.sub        = user.id
+        token.email      = user.email ?? undefined
+        token.roles      = (user as { roles: string[] }).roles
+        token.mfaPending = (user as { mfaPending?: boolean }).mfaPending ?? false
       } else if (account && profile) {
         const realmAccess = (profile as Record<string, unknown>).realm_access as
           | { roles?: string[] }
@@ -90,9 +151,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token
     },
     async session({ session, token }) {
-      session.user.id    = token.sub!
-      session.user.email = token.email!
-      session.user.roles = (token.roles ?? []) as string[]
+      session.user.id         = token.sub!
+      session.user.email      = token.email!
+      session.user.roles      = (token.roles ?? []) as string[]
+      session.user.mfaPending = (token.mfaPending as boolean) ?? false
       return session
     },
   },
