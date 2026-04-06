@@ -25,11 +25,11 @@ Passkeys let users skip the password on login; TOTP gates access after any first
 
 Plans:
 - [x] 01-01: Data layer — Prisma models (Passkey, TotpCredential) + migration + TOTP confirm route update
-- [ ] 01-02: Passkey API routes + auth.ts token flow (passkeyToken, mfaCompleteToken, mfaPending JWT)
+- [x] 01-02: Passkey API routes + auth.ts token flow (passkeyToken, mfaCompleteToken, mfaPending JWT)
 - [ ] 01-03: UI — login page passkey button + /2fa page + middleware guard
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Passkey Primary Auth + TOTP 2FA | 1/3 | In Progress|  |
+| 1. Passkey Primary Auth + TOTP 2FA | 2/3 | In Progress|  |
