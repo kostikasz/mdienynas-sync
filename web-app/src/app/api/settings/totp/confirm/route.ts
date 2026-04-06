@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth"
 import { verifyTotp } from "@/lib/totp"
 import { createOtpCredential } from "@/lib/keycloak/admin"
+import { encryptSecret } from "@/lib/crypto"
+import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 
 export async function POST(req: Request) {
@@ -18,5 +20,13 @@ export async function POST(req: Request) {
   }
 
   await createOtpCredential(session.user.id, secret, label ?? "Authenticator App")
+
+  const encryptedSecret = encryptSecret(secret)
+  await prisma.totpCredential.upsert({
+    where: { userId: session.user.id },
+    update: { encryptedSecret, label: label ?? "Authenticator App" },
+    create: { userId: session.user.id, encryptedSecret, label: label ?? "Authenticator App" },
+  })
+
   return NextResponse.json({ ok: true })
 }
