@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { prisma } from "@/lib/prisma"
 
 const CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     ?? ""
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? ""
 
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url)
-  const code    = searchParams.get("code")
-  const userId  = searchParams.get("state")
+  const code     = searchParams.get("code")
+  const userId   = searchParams.get("state")
   const errParam = searchParams.get("error")
 
   if (errParam || !code || !userId) {
     return NextResponse.redirect(new URL("/integrations?error=gcal_denied", origin))
   }
 
-  // Exchange code for tokens
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method:  "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -27,22 +26,15 @@ export async function GET(req: NextRequest) {
     }),
   })
 
-  if (!tokenRes.ok) {
-    return NextResponse.redirect(new URL("/integrations?error=gcal_token", origin))
-  }
+  if (!tokenRes.ok) return NextResponse.redirect(new URL("/integrations?error=gcal_token", origin))
 
   const tokens = await tokenRes.json()
 
-  // Store tokens in integrations table using admin client (no session in callback)
-  const supabase = createAdminClient()
-  await supabase.from("integrations").upsert({
-    user_id:       userId,
-    provider:      "google_calendar",
-    access_token:  tokens.access_token,
-    refresh_token: tokens.refresh_token ?? null,
-    connected_at:  new Date().toISOString(),
-    metadata:      { calendar_id: "primary" },
-  }, { onConflict: "user_id,provider" })
+  await prisma.integration.upsert({
+    where:  { userId_provider: { userId, provider: "google_calendar" } },
+    update: { accessToken: tokens.access_token, refreshToken: tokens.refresh_token ?? null, connectedAt: new Date(), metadata: { calendar_id: "primary" } },
+    create: { userId, provider: "google_calendar", accessToken: tokens.access_token, refreshToken: tokens.refresh_token ?? null, connectedAt: new Date(), metadata: { calendar_id: "primary" } },
+  })
 
   return NextResponse.redirect(new URL("/integrations?connected=gcal", origin))
 }

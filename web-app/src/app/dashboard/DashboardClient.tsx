@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { Upload, TrendingUp, BookOpen, Clock } from "lucide-react"
+import { Upload, TrendingUp, BookOpen, Clock, Sparkles, Star, RefreshCw, Loader2 } from "lucide-react"
 import type { GradesSnapshot } from "@/types/grades"
 import {
   calcGPA,
@@ -284,6 +284,9 @@ export default function DashboardClient({ grades, scrapedAt }: Props) {
         </div>
       </section>
 
+      {/* AI Overview */}
+      <AiOverviewCard grades={grades} />
+
       {/* Bottom row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent grades */}
@@ -387,5 +390,303 @@ function StatCard({
       </div>
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
     </div>
+  )
+}
+
+/* ─── AI Overview Card ─────────────────────────────────────────── */
+
+type AiUsageStatus = {
+  tier: "free" | "pro"
+  lifetimeUsage: number
+  usageToday: number
+  dailyLimit: number
+  canGenerate: boolean
+  upgradeUrl?: string
+}
+
+type AiAnalysisResult = {
+  analysis: string
+  tier: "free" | "pro"
+  usageToday: number
+  dailyLimit: number
+  tokensUsed: number
+}
+
+type AiState =
+  | { kind: "idle" }
+  | { kind: "loading-status" }
+  | { kind: "ready"; status: AiUsageStatus }
+  | { kind: "generating"; status: AiUsageStatus }
+  | { kind: "success"; result: AiAnalysisResult }
+  | { kind: "rate-limited-free"; upgradeUrl?: string }
+  | { kind: "rate-limited-pro"; usageToday: number; dailyLimit: number; resetAt?: string }
+  | { kind: "error"; message?: string }
+
+function AiOverviewCard({ grades }: { grades: GradesSnapshot | null }) {
+  const [state, setState] = useState<AiState>({ kind: "idle" })
+
+  const fetchStatus = useCallback(async () => {
+    setState({ kind: "loading-status" })
+    try {
+      const res = await fetch("/api/ai/overview")
+      if (!res.ok) {
+        setState({ kind: "error" })
+        return
+      }
+      const data: AiUsageStatus = await res.json()
+      setState({ kind: "ready", status: data })
+    } catch {
+      setState({ kind: "error" })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (grades !== null) {
+      fetchStatus()
+    }
+  }, [grades, fetchStatus])
+
+  async function handleGenerate() {
+    if (state.kind !== "ready" && state.kind !== "success") return
+    const prevStatus = state.kind === "ready" ? state.status : null
+    setState(prevStatus ? { kind: "generating", status: prevStatus } : { kind: "generating", status: { tier: "free", lifetimeUsage: 0, usageToday: 0, dailyLimit: 1, canGenerate: true } })
+    try {
+      const res = await fetch("/api/ai/overview", { method: "POST" })
+      const data = await res.json()
+
+      if (res.status === 429) {
+        if (data.upgradeUrl) {
+          setState({ kind: "rate-limited-free", upgradeUrl: data.upgradeUrl })
+        } else {
+          setState({ kind: "rate-limited-pro", usageToday: data.limit ?? 5, dailyLimit: data.limit ?? 5, resetAt: data.resetAt })
+        }
+        return
+      }
+
+      if (!res.ok) {
+        setState({ kind: "error", message: data.error })
+        return
+      }
+
+      setState({ kind: "success", result: data as AiAnalysisResult })
+    } catch {
+      setState({ kind: "error" })
+    }
+  }
+
+  // Don't render if no grades
+  if (grades === null) return null
+
+  const isLoading = state.kind === "loading-status" || state.kind === "generating"
+  const canGenerate = state.kind === "ready" && state.status.canGenerate
+  const canRegenerate = state.kind === "success"
+  const isPro = (state.kind === "ready" && state.status.tier === "pro") || (state.kind === "success" && state.result.tier === "pro")
+  const isFree = (state.kind === "ready" && state.status.tier === "free") || (state.kind === "success" && state.result.tier === "free")
+
+  return (
+    <section>
+      <h2
+        className="text-sm font-semibold uppercase tracking-wider mb-4"
+        style={{ color: "var(--fg-muted)" }}
+      >
+        AI Insights
+      </h2>
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{ background: "var(--surface)", border: "1px solid var(--bdr)", boxShadow: "var(--shadow)" }}
+      >
+        {/* Card header */}
+        <div
+          className="flex items-center justify-between px-5 py-4"
+          style={{ borderBottom: "1px solid var(--bdr)" }}
+        >
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="w-4 h-4" style={{ color: "var(--accent)" }} />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold" style={{ color: "var(--fg)" }}>
+                  AI Grade Overview
+                </span>
+                {isPro && (
+                  <span
+                    className="inline-flex items-center gap-1 text-xs font-semibold px-1.5 py-0.5 rounded"
+                    style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
+                  >
+                    <Star className="w-2.5 h-2.5" />
+                    PRO
+                  </span>
+                )}
+                {isFree && state.kind === "ready" && state.status.canGenerate && (
+                  <span
+                    className="text-xs font-medium px-1.5 py-0.5 rounded"
+                    style={{ background: "var(--surface-2)", border: "1px solid var(--bdr)", color: "var(--fg-muted)" }}
+                  >
+                    1 free demo
+                  </span>
+                )}
+              </div>
+              <p className="text-xs" style={{ color: "var(--fg-muted)" }}>
+                Powered by Claude · Personal to your grades
+              </p>
+            </div>
+          </div>
+
+          {/* Action button */}
+          {(canGenerate || canRegenerate || state.kind === "generating") && (
+            <button
+              onClick={handleGenerate}
+              disabled={isLoading}
+              className="inline-flex items-center gap-1.5 text-xs font-medium rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50"
+              style={{
+                background: "var(--accent)",
+                color: "var(--accent-fg)",
+                cursor: isLoading ? "not-allowed" : "pointer",
+              }}
+              onMouseEnter={(e) => { if (!isLoading) (e.currentTarget as HTMLElement).style.background = "var(--accent-hov)" }}
+              onMouseLeave={(e) => { if (!isLoading) (e.currentTarget as HTMLElement).style.background = "var(--accent)" }}
+            >
+              {state.kind === "generating" ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Generating...
+                </>
+              ) : canRegenerate ? (
+                <>
+                  <RefreshCw className="w-3 h-3" />
+                  Regenerate
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3 h-3" />
+                  Generate overview
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Card content */}
+        <div className="px-5 py-5">
+          {/* Idle / loading status */}
+          {(state.kind === "idle" || state.kind === "loading-status") && (
+            <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{ background: "var(--surface-2)", border: "1px solid var(--bdr)" }}
+              >
+                <Sparkles className="w-5 h-5" style={{ color: "var(--accent)" }} />
+              </div>
+              <p className="text-sm max-w-xs" style={{ color: "var(--fg-muted)" }}>
+                {state.kind === "loading-status"
+                  ? "Checking availability..."
+                  : "Get an AI-powered summary of your grade trends and performance."}
+              </p>
+            </div>
+          )}
+
+          {/* Ready — show CTA to generate */}
+          {state.kind === "ready" && state.status.canGenerate && (
+            <div className="flex flex-col items-center justify-center py-8 text-center gap-4">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{ background: "var(--surface-2)", border: "1px solid var(--bdr)" }}
+              >
+                <Sparkles className="w-5 h-5" style={{ color: "var(--accent)" }} />
+              </div>
+              <p className="text-sm max-w-xs" style={{ color: "var(--fg-muted)" }}>
+                Get an AI-powered summary of your grade trends and performance.
+              </p>
+              <button
+                onClick={handleGenerate}
+                className="inline-flex items-center gap-2 text-sm font-medium rounded-lg px-4 py-2 transition-colors"
+                style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent-hov)" }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent)" }}
+              >
+                <Sparkles className="w-4 h-4" />
+                Generate overview
+              </button>
+            </div>
+          )}
+
+          {/* Generating — skeleton */}
+          {state.kind === "generating" && (
+            <div className="space-y-3 py-2 animate-pulse">
+              {[80, 60, 90, 50, 70].map((w, i) => (
+                <div
+                  key={i}
+                  className="h-3 rounded"
+                  style={{ background: "var(--bdr)", width: `${w}%` }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Success — show analysis */}
+          {state.kind === "success" && (
+            <div className="space-y-4">
+              <p
+                className="text-sm leading-relaxed whitespace-pre-wrap"
+                style={{ color: "var(--fg)" }}
+              >
+                {state.result.analysis}
+              </p>
+              <p className="text-xs" style={{ color: "var(--fg-muted)" }}>
+                Generated with claude-haiku · {state.result.tokensUsed.toLocaleString()} tokens used
+              </p>
+            </div>
+          )}
+
+          {/* Rate limited — free tier exhausted */}
+          {state.kind === "rate-limited-free" && (
+            <div className="flex flex-col items-center justify-center py-6 text-center gap-3">
+              <p className="text-sm" style={{ color: "var(--fg)" }}>
+                You&apos;ve used your free AI overview. Upgrade to Pro for 5 overviews per day.
+              </p>
+              <Link
+                href={state.upgradeUrl ?? "/checkout"}
+                className="inline-flex items-center gap-1.5 text-sm font-medium rounded-lg px-4 py-2 transition-colors"
+                style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent-hov)" }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent)" }}
+              >
+                <Star className="w-3.5 h-3.5" />
+                Upgrade to Pro →
+              </Link>
+            </div>
+          )}
+
+          {/* Rate limited — pro daily limit */}
+          {state.kind === "rate-limited-pro" && (
+            <div className="flex items-center justify-center py-6">
+              <p className="text-sm" style={{ color: "var(--fg-muted)" }}>
+                Daily limit reached ({state.usageToday}/{state.dailyLimit}).{" "}
+                {state.resetAt
+                  ? `Resets at ${new Date(state.resetAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} UTC.`
+                  : "Resets at midnight UTC."}
+              </p>
+            </div>
+          )}
+
+          {/* Error */}
+          {state.kind === "error" && (
+            <div className="flex items-center justify-center py-6">
+              <p className="text-sm" style={{ color: "#dc2626" }}>
+                Something went wrong. Please try again.
+              </p>
+            </div>
+          )}
+
+          {/* Ready but can't generate (edge case) */}
+          {state.kind === "ready" && !state.status.canGenerate && (
+            <div className="flex items-center justify-center py-6">
+              <p className="text-sm" style={{ color: "var(--fg-muted)" }}>
+                AI overview is not available right now.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   )
 }

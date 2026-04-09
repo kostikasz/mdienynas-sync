@@ -1,22 +1,26 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 
-// GET /api/integrations/status — return current connection status for all providers
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { data: integrations } = await supabase
-    .from("integrations")
-    .select("provider, last_synced_at, connected_at, metadata")
-    .eq("user_id", user.id)
+  const rows = await prisma.integration.findMany({
+    where:  { userId: session.user.id },
+    select: { provider: true, lastSyncedAt: true, connectedAt: true, metadata: true },
+  })
 
-  const connected: Record<string, { last_synced_at: string | null; connected_at: string | null; metadata: Record<string, string> | null }> = {}
-  for (const row of integrations ?? []) {
+  const connected: Record<string, {
+    last_synced_at: string | null
+    connected_at:   string | null
+    metadata:       Record<string, string> | null
+  }> = {}
+
+  for (const row of rows) {
     connected[row.provider] = {
-      last_synced_at: row.last_synced_at,
-      connected_at:   row.connected_at,
+      last_synced_at: row.lastSyncedAt?.toISOString() ?? null,
+      connected_at:   row.connectedAt?.toISOString()  ?? null,
       metadata:       row.metadata as Record<string, string> | null,
     }
   }

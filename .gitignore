@@ -3,6 +3,7 @@
 .env.local
 .env.*.local
 *.env
+acme.json
 # Keep the example template
 !.env.example
 
@@ -28,9 +29,12 @@ var/
 sdist/
 develop-eggs/
 .installed.cfg
-lib/
 lib64/
 wheels/
+# Python venv lib dirs only (not web-app/src/lib)
+/lib/
+scraper/lib/
+integrations/lib/
 
 # Virtual environments
 .venv/
@@ -69,10 +73,14 @@ Thumbs.db
 
 # ─── Claude Code internal ───────────────────────────────────────────────────────
 .claude/
+docs/superpowers/
 *.md
 !README.md
 !**/README.md
 !docs/**/*.md
+
+# ─── Worktrees ──────────────────────────────────────────────────────────────────
+.worktrees/
 
 # ─── Logs & Misc ────────────────────────────────────────────────────────────────
 *.log

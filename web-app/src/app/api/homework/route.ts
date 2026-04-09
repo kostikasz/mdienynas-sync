@@ -1,31 +1,32 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@/lib/auth"
+import { getBearerUserId } from "@/lib/auth/getBearerUserId"
+import { prisma } from "@/lib/prisma"
 
-const MAX_BODY_BYTES = 1 * 1024 * 1024 // 1 MB
+const MAX_BODY_BYTES = 1 * 1024 * 1024
 
-// GET /api/homework — latest homework snapshot for the user
-export async function GET() {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  const { data, error } = await supabase
-    .from("homework_snapshots")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("generated_at", { ascending: false })
-    .limit(1)
-    .single()
-
-  if (error) return NextResponse.json({ error: "No homework data found" }, { status: 404 })
-  return NextResponse.json(data)
+async function resolveUserId(req: NextRequest): Promise<string | null> {
+  const session = await auth()
+  if (session?.user.id) return session.user.id
+  return getBearerUserId(req)
 }
 
-// POST /api/homework — upload a homework.json
+export async function GET(req: NextRequest) {
+  const userId = await resolveUserId(req)
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const snapshot = await prisma.homeworkSnapshot.findFirst({
+    where:   { userId },
+    orderBy: { generatedAt: "desc" },
+  })
+
+  if (!snapshot) return NextResponse.json({ error: "No homework data found" }, { status: 404 })
+  return NextResponse.json(snapshot)
+}
+
 export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const userId = await resolveUserId(req)
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const contentLength = Number(req.headers.get("content-length") ?? 0)
   if (contentLength > MAX_BODY_BYTES) {
@@ -44,20 +45,18 @@ export async function POST(req: NextRequest) {
   }
 
   const generatedAt = typeof body.generated_at === "string" && !isNaN(Date.parse(body.generated_at))
-    ? body.generated_at
-    : new Date().toISOString()
+    ? new Date(body.generated_at)
+    : new Date()
 
-  const { data, error } = await supabase
-    .from("homework_snapshots")
-    .insert({
-      user_id:      user.id,
-      generated_at: generatedAt,
-      source:       typeof body.source === "string" ? body.source : "upload",
-      raw_json:     body,
-    })
-    .select("id")
-    .single()
+  const snapshot = await prisma.homeworkSnapshot.create({
+    data: {
+      userId,
+      generatedAt,
+      source:  typeof body.source === "string" ? body.source : "upload",
+      rawJson: body as never,
+    },
+    select: { id: true },
+  })
 
-  if (error) return NextResponse.json({ error: "Failed to save snapshot" }, { status: 500 })
-  return NextResponse.json({ id: data.id, count: (body.homework as unknown[]).length })
+  return NextResponse.json({ id: snapshot.id, count: (body.homework as unknown[]).length })
 }

@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  gradesSnapshots    GradesSnapshot[]
+  homeworkSnapshots  HomeworkSnapshot[]
+  integrations       Integration[]
+  subscription       Subscription?
+  payments           Payment[]
+  aiUsage            AiOverviewUsage[]
+  courses            Course[]
+  passkeys           Passkey[]
+  totpCredential     TotpCredential?
+  webAuthnChallenges WebAuthnChallenge[]
+
+  @@map("users")
+}
+
+model GradesSnapshot {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  scrapedAt DateTime @map("scraped_at")
+  term      String?
+  rawJson   Json     @map("raw_json")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courses Course[]
+
+  @@map("grades_snapshots")
+}
+
+model Course {
+  id                String  @id @default(uuid())
+  userId            String  @map("user_id")
+  snapshotId        String? @map("snapshot_id")
+  courseCode        String? @map("course_code")
+  name              String?
+  instructor        String?
+  credits           Int?
+  currentGrade      String? @map("current_grade")
+  currentPercentage Float?  @map("current_percentage")
+  term              String?
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshot GradesSnapshot? @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@map("courses")
+}
+
+model HomeworkSnapshot {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  generatedAt DateTime @map("generated_at")
+  source      String?
+  rawJson     Json     @map("raw_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("homework_snapshots")
+}
+
+model Integration {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  provider     String
+  accessToken  String?   @map("access_token")
+  refreshToken String?   @map("refresh_token")
+  metadata     Json?
+  connectedAt  DateTime? @map("connected_at")
+  lastSyncedAt DateTime? @map("last_synced_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@map("integrations")
+}
+
+model Subscription {
+  id        String    @id @default(uuid())
+  userId    String    @unique @map("user_id")
+  plan      String    @default("free")
+  status    String    @default("active")
+  startedAt DateTime  @default(now()) @map("started_at")
+  expiresAt DateTime? @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@map("subscriptions")
+}
+
+model Payment {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  subscriptionId  String?   @map("subscription_id")
+  provider        String    @default("paysera")
+  providerOrderId String?   @map("provider_order_id")
+  amountCents     Int       @map("amount_cents")
+  currency        String    @default("EUR")
+  status          String    @default("pending")
+  metadata        Json?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([providerOrderId])
+  @@map("payments")
+}
+
+model AiOverviewUsage {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  usedAt     DateTime @default(now()) @map("used_at")
+  tokensUsed Int?     @map("tokens_used")
+  model      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([usedAt])
+  @@map("ai_overview_usage")
+}
+
+model Passkey {
+  id           String   @id @default(uuid())
+  credentialId String   @unique @map("credential_id")
+  publicKey    Bytes    @map("public_key")
+  counter      BigInt   @default(0)
+  transports   String[]
+  name         String   @default("Passkey")
+  userId       String   @map("user_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("passkeys")
+}
+
+model TotpCredential {
+  id              String    @id @default(uuid())
+  userId          String    @unique @map("user_id")
+  encryptedSecret String    @map("encrypted_secret")
+  label           String    @default("Authenticator App")
+  failedAttempts  Int       @default(0) @map("failed_attempts")
+  lockedUntil     DateTime? @map("locked_until")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("totp_credentials")
+}
+
+model WebAuthnChallenge {
+  id        String   @id @default(uuid())
+  challenge String   @unique
+  userId    String?  @map("user_id")
+  email     String?
+  expiresAt DateTime @map("expires_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("webauthn_challenges")
+}

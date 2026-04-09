@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/client"
+import { signIn } from "next-auth/react"
 import { PublicNavbar } from "@/components/PublicNavbar"
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile"
 
 function GoogleIcon() {
   return (
@@ -27,81 +28,47 @@ function DiscordIcon() {
 
 export default function RegisterPage() {
   const router = useRouter()
-  const [email,    setEmail]    = useState("")
-  const [password, setPassword] = useState("")
-  const [error,    setError]    = useState<string | null>(null)
-  const [loading,  setLoading]  = useState<"email" | "google" | "discord" | null>(null)
-  const [done,     setDone]     = useState(false)
+  const [email,          setEmail]          = useState("")
+  const [password,       setPassword]       = useState("")
+  const [error,          setError]          = useState<string | null>(null)
+  const [loading,        setLoading]        = useState<"email" | "google" | "discord" | null>(null)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+
+  const turnstileRef = useRef<TurnstileInstance>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     setLoading("email")
 
-    const supabase = createClient()
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${location.origin}/auth/callback` },
+    if (!turnstileToken) {
+      setError("Please complete the security check.")
+      setLoading(null)
+      return
+    }
+
+    const res = await fetch("/api/auth/register", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ email, password, turnstileToken }),
     })
 
-    if (error) {
-      setError(error.message)
+    const data = await res.json()
+    if (!res.ok) {
+      setError(data.error ?? "Registration failed.")
+      turnstileRef.current?.reset()
+      setTurnstileToken(null)
       setLoading(null)
-    } else {
-      setDone(true)
+      return
     }
+
+    router.push("/login?registered=1")
   }
 
   async function handleOAuth(provider: "google" | "discord") {
     setError(null)
     setLoading(provider)
-
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${location.origin}/auth/callback` },
-    })
-
-    if (error) {
-      setError(error.message)
-      setLoading(null)
-    }
-  }
-
-  if (done) {
-    return (
-      <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
-        <PublicNavbar />
-        <div className="flex-1 flex items-center justify-center px-4">
-          <div
-            className="rounded-2xl p-10 max-w-sm w-full text-center space-y-3"
-            style={{ background: "var(--surface)", border: "1px solid var(--bdr)", boxShadow: "var(--shadow)" }}
-          >
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2"
-              style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold" style={{ color: "var(--fg)" }}>Check your email</h2>
-            <p className="text-sm" style={{ color: "var(--fg-muted)" }}>
-              We sent a confirmation link to{" "}
-              <strong style={{ color: "var(--fg)" }}>{email}</strong>.
-            </p>
-            <Link
-              href="/login"
-              className="inline-block mt-4 text-sm font-medium transition-colors"
-              style={{ color: "var(--accent)" }}
-            >
-              Back to sign in
-            </Link>
-          </div>
-        </div>
-      </div>
-    )
+    await signIn("keycloak", { callbackUrl: "/dashboard" }, { kc_idp_hint: provider })
   }
 
   return (
@@ -213,6 +180,15 @@ export default function RegisterPage() {
                   autoComplete="new-password"
                 />
               </div>
+
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                options={{ theme: "auto" }}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onError={() => setTurnstileToken(null)}
+                onExpire={() => setTurnstileToken(null)}
+              />
 
               {error && (
                 <p

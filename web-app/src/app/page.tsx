@@ -1,13 +1,12 @@
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { LayoutDashboard, TrendingUp, CalendarDays, Plug } from "lucide-react"
+import { LayoutDashboard, TrendingUp, CalendarDays, Plug, CheckCircle, Sparkles } from "lucide-react"
 import { PublicNavbar } from "@/components/PublicNavbar"
 
 export default async function HomePage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) redirect("/dashboard")
+  const session = await auth()
+  if (session) redirect("/dashboard")
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--fg)" }}>
@@ -45,20 +44,27 @@ export default async function HomePage() {
 
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <Link
-            href="/register"
+            href="/api/auth/signin"
             className="px-6 py-3 font-semibold rounded-xl text-sm transition-colors"
             style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
           >
             Get started — it&apos;s free
           </Link>
           <Link
-            href="/login"
+            href="/api/auth/signin"
             className="px-6 py-3 rounded-xl text-sm transition-colors"
             style={{ border: "1px solid var(--bdr)", color: "var(--fg-muted)" }}
           >
             Sign in →
           </Link>
         </div>
+        <a
+          href="#pricing"
+          className="mt-4 text-sm transition-opacity hover:opacity-80"
+          style={{ color: "var(--fg-muted)" }}
+        >
+          See Pro plan →
+        </a>
       </section>
 
       {/* ── Features ── */}
@@ -136,6 +142,102 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ── Pricing ── */}
+      <section id="pricing" className="max-w-4xl mx-auto px-6 pb-28">
+        <h2
+          className="text-2xl font-bold text-center mb-3"
+          style={{ fontFamily: "var(--font-syne), sans-serif", color: "var(--fg)" }}
+        >
+          Simple pricing
+        </h2>
+        <p className="text-sm text-center mb-12" style={{ color: "var(--fg-muted)" }}>
+          Start free. Upgrade when you need more AI insights.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          {/* Free card */}
+          <div
+            className="rounded-2xl p-6 flex flex-col"
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--bdr)",
+              boxShadow: "var(--shadow)",
+            }}
+          >
+            <p className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--fg-muted)" }}>
+              Free
+            </p>
+            <p className="text-3xl font-extrabold mb-1" style={{ color: "var(--fg)" }}>
+              €0
+            </p>
+            <p className="text-sm mb-6" style={{ color: "var(--fg-muted)" }}>
+              Forever
+            </p>
+            <ul className="flex flex-col gap-3 mb-8 flex-1">
+              {FREE_FEATURES.map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm" style={{ color: "var(--fg)" }}>
+                  <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "var(--accent)" }} />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/api/auth/signin"
+              className="block text-center px-5 py-3 rounded-xl text-sm font-semibold transition-colors"
+              style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
+            >
+              Get started free
+            </Link>
+          </div>
+
+          {/* Pro card */}
+          <div
+            className="rounded-2xl p-6 flex flex-col relative"
+            style={{
+              background: "var(--surface)",
+              border: "2px solid var(--accent)",
+              boxShadow: "var(--shadow)",
+            }}
+          >
+            <span
+              className="absolute top-4 right-4 text-xs font-semibold rounded-full px-2 py-0.5"
+              style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
+            >
+              Most popular
+            </span>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--fg-muted)" }}>
+              Pro
+            </p>
+            <p className="text-3xl font-extrabold mb-1" style={{ color: "var(--fg)" }}>
+              €3.99
+            </p>
+            <p className="text-sm mb-6" style={{ color: "var(--fg-muted)" }}>
+              / month
+            </p>
+            <ul className="flex flex-col gap-3 mb-8 flex-1">
+              {PRO_FEATURES.map(({ label, ai }) => (
+                <li key={label} className="flex items-start gap-2 text-sm" style={{ color: "var(--fg)" }}>
+                  {ai
+                    ? <Sparkles className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "var(--accent)" }} />
+                    : <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "var(--accent)" }} />
+                  }
+                  {label}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/checkout"
+              className="block text-center px-5 py-3 rounded-xl text-sm font-semibold transition-colors"
+              style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
+            >
+              Buy Pro
+            </Link>
+            <p className="text-xs text-center mt-3" style={{ color: "var(--fg-muted)" }}>
+              One-time monthly charge · Cancel anytime
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ── Footer CTA ── */}
       <section
         className="py-16 text-center px-6"
@@ -151,7 +253,7 @@ export default async function HomePage() {
           Setup takes two minutes. You&apos;ll need your Mano Dienynas credentials.
         </p>
         <Link
-          href="/register"
+          href="/api/auth/signin"
           className="inline-block px-8 py-3 font-semibold rounded-xl text-sm transition-colors"
           style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
         >
@@ -166,10 +268,10 @@ export default async function HomePage() {
       >
         <span>© 2026 Dienynas SYNC</span>
         <div className="flex items-center gap-4">
-          <Link href="/login" className="hover:opacity-80 transition-opacity">
+          <Link href="/api/auth/signin" className="hover:opacity-80 transition-opacity">
             Sign in
           </Link>
-          <Link href="/register" className="hover:opacity-80 transition-opacity">
+          <Link href="/api/auth/signin" className="hover:opacity-80 transition-opacity">
             Register
           </Link>
         </div>
@@ -199,6 +301,22 @@ const FEATURES = [
     title: "Integrations",
     body: "Push grades and deadlines to Notion, Google Calendar, or export as an .ics file.",
   },
+]
+
+const FREE_FEATURES = [
+  "Grade dashboard & calendar",
+  "Grade trend graphs",
+  "Google Calendar & Notion sync",
+  "Apple Calendar .ics export",
+  "1 free AI grade overview (demo)",
+  "Secure encrypted storage",
+]
+
+const PRO_FEATURES = [
+  { label: "Everything in Free", ai: false },
+  { label: "5 AI grade overviews per day", ai: true },
+  { label: "Priority support", ai: false },
+  { label: "Early access to new features", ai: false },
 ]
 
 const STEPS = [

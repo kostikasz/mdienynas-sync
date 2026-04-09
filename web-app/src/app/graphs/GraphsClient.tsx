@@ -30,7 +30,7 @@ export default function GraphsClient({ grades }: Props) {
   if (!grades) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[60vh]">
-        <p className="text-[#9a9080]">No grades data. Upload a grades.json first.</p>
+        <p className="text-[var(--fg-muted)]">No grades data. Upload a grades.json first.</p>
       </div>
     )
   }
@@ -58,40 +58,44 @@ export default function GraphsClient({ grades }: Props) {
   const withGrades    = courses.filter((c) => getNumericGrades(c.assignments).length > 0).length
   const withoutGrades = courses.length - withGrades
   const pieData = [
-    { name: "With grades", value: withGrades,    fill: "#bc6c25" },
-    { name: "No numeric grades", value: withoutGrades, fill: "#c8b898" },
+    { name: "With grades", value: withGrades,    fill: "#31572c" },
+    { name: "No numeric grades", value: withoutGrades, fill: "#90a955" },
   ].filter((d) => d.value > 0)
+
+  const tooltipStyle = {
+    contentStyle: { background: "var(--surface-2)", border: "1px solid var(--bdr)", borderRadius: 8 },
+    labelStyle:   { color: "var(--fg)" },
+    itemStyle:    { color: "var(--accent)" },
+  }
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
-      <h1 className="text-2xl font-bold text-[#1c1c17]">Graphs</h1>
+      <h1 className="text-2xl font-bold text-[var(--fg)]">Graphs</h1>
 
       {/* Average per course */}
-      <section className="bg-white border border-[#e8dfc0] rounded-xl p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-[#7a7060] uppercase tracking-wider mb-6">
+      <section className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl p-6 shadow-[var(--shadow)]">
+        <h2 className="text-sm font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-6">
           Average Grade per Course
         </h2>
         {courseAvgData.length === 0 ? (
-          <p className="text-[#9a9080] text-sm">No numeric grades available.</p>
+          <p className="text-[var(--fg-muted)] text-sm">No numeric grades available.</p>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={courseAvgData} margin={{ top: 0, right: 0, left: -20, bottom: 80 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e8dfc0" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(49,87,44,0.15)" />
               <XAxis
                 dataKey="name"
-                tick={{ fill: "#7a7060", fontSize: 11 }}
+                tick={{ fill: "#31572c", fontSize: 11 }}
                 angle={-40}
                 textAnchor="end"
                 interval={0}
               />
               <YAxis
-                tick={{ fill: "#7a7060", fontSize: 11 }}
+                tick={{ fill: "#31572c", fontSize: 11 }}
                 domain={[0, 10]}
               />
               <Tooltip
-                contentStyle={{ background: "#fffdf2", border: "1px solid #e8dfc0", borderRadius: 8 }}
-                labelStyle={{ color: "#1c1c17" }}
-                itemStyle={{ color: "#bc6c25" }}
+                {...tooltipStyle}
                 formatter={(v) => [typeof v === "number" ? v.toFixed(2) : v, "Average"]}
               />
               <Bar dataKey="avg" radius={[4, 4, 0, 0]}>
@@ -107,33 +111,31 @@ export default function GraphsClient({ grades }: Props) {
       {/* Bottom row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Grade distribution */}
-        <section className="bg-white border border-[#e8dfc0] rounded-xl p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-[#7a7060] uppercase tracking-wider mb-6">
+        <section className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl p-6 shadow-[var(--shadow)]">
+          <h2 className="text-sm font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-6">
             Grade Distribution (All Courses)
           </h2>
           {distData.length === 0 ? (
-            <p className="text-[#9a9080] text-sm">No numeric grades.</p>
+            <p className="text-[var(--fg-muted)] text-sm">No numeric grades.</p>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={distData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e8dfc0" />
-                <XAxis dataKey="grade" tick={{ fill: "#7a7060", fontSize: 12 }} />
-                <YAxis tick={{ fill: "#7a7060", fontSize: 12 }} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(49,87,44,0.15)" />
+                <XAxis dataKey="grade" tick={{ fill: "#31572c", fontSize: 12 }} />
+                <YAxis tick={{ fill: "#31572c", fontSize: 12 }} allowDecimals={false} />
                 <Tooltip
-                  contentStyle={{ background: "#fffdf2", border: "1px solid #e8dfc0", borderRadius: 8 }}
-                  labelStyle={{ color: "#1c1c17" }}
-                  itemStyle={{ color: "#bc6c25" }}
+                  {...tooltipStyle}
                   formatter={(v) => [v, "Count"]}
                 />
-                <Bar dataKey="count" fill="#bc6c25" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" fill="#31572c" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
         </section>
 
         {/* Course coverage pie */}
-        <section className="bg-white border border-[#e8dfc0] rounded-xl p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-[#7a7060] uppercase tracking-wider mb-6">
+        <section className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl p-6 shadow-[var(--shadow)]">
+          <h2 className="text-sm font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-6">
             Course Coverage
           </h2>
           <ResponsiveContainer width="100%" height={220}>
@@ -152,12 +154,12 @@ export default function GraphsClient({ grades }: Props) {
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{ background: "#fffdf2", border: "1px solid #e8dfc0", borderRadius: 8 }}
-                itemStyle={{ color: "#1c1c17" }}
+                contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--bdr)", borderRadius: 8 }}
+                itemStyle={{ color: "var(--fg)" }}
               />
               <Legend
                 formatter={(value) => (
-                  <span style={{ color: "#7a7060", fontSize: 12 }}>{value}</span>
+                  <span style={{ color: "var(--fg-muted)", fontSize: 12 }}>{value}</span>
                 )}
               />
             </PieChart>
@@ -166,35 +168,35 @@ export default function GraphsClient({ grades }: Props) {
       </div>
 
       {/* Per-course numeric summary table */}
-      <section className="bg-white border border-[#e8dfc0] rounded-xl overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-[#e8dfc0]">
-          <h2 className="text-sm font-semibold text-[#7a7060] uppercase tracking-wider">
+      <section className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl overflow-hidden shadow-[var(--shadow)]">
+        <div className="px-6 py-4 border-b border-[var(--bdr)]">
+          <h2 className="text-sm font-semibold text-[var(--fg-muted)] uppercase tracking-wider">
             Summary Table
           </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#e8dfc0]">
-                <th className="text-left px-4 py-3 text-xs text-[#9a9080] font-medium">Course</th>
-                <th className="text-center px-4 py-3 text-xs text-[#9a9080] font-medium">Entries</th>
-                <th className="text-center px-4 py-3 text-xs text-[#9a9080] font-medium">Numeric</th>
-                <th className="text-center px-4 py-3 text-xs text-[#9a9080] font-medium">Min</th>
-                <th className="text-center px-4 py-3 text-xs text-[#9a9080] font-medium">Max</th>
-                <th className="text-center px-4 py-3 text-xs text-[#9a9080] font-medium">Avg</th>
+              <tr className="border-b border-[var(--bdr)]">
+                <th className="text-left px-4 py-3 text-xs text-[var(--fg-muted)] font-medium">Course</th>
+                <th className="text-center px-4 py-3 text-xs text-[var(--fg-muted)] font-medium">Entries</th>
+                <th className="text-center px-4 py-3 text-xs text-[var(--fg-muted)] font-medium">Numeric</th>
+                <th className="text-center px-4 py-3 text-xs text-[var(--fg-muted)] font-medium">Min</th>
+                <th className="text-center px-4 py-3 text-xs text-[var(--fg-muted)] font-medium">Max</th>
+                <th className="text-center px-4 py-3 text-xs text-[var(--fg-muted)] font-medium">Avg</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#e8dfc0]">
+            <tbody className="divide-y divide-[var(--bdr)]">
               {courses.map((course) => {
                 const nums = getNumericGrades(course.assignments)
                 const avg  = getCourseAverage(course)
                 return (
-                  <tr key={course.id} className="hover:bg-[#fef8e8]">
-                    <td className="px-4 py-3 text-[#1c1c17] text-sm">
+                  <tr key={course.id} className="hover:bg-[var(--surface-2)]">
+                    <td className="px-4 py-3 text-[var(--fg)] text-sm">
                       {shortCourseName(course.name, 45)}
                     </td>
-                    <td className="px-4 py-3 text-[#7a7060] text-center">{course.assignments.length}</td>
-                    <td className="px-4 py-3 text-[#7a7060] text-center">{nums.length}</td>
+                    <td className="px-4 py-3 text-[var(--fg-muted)] text-center">{course.assignments.length}</td>
+                    <td className="px-4 py-3 text-[var(--fg-muted)] text-center">{nums.length}</td>
                     <td className="px-4 py-3 text-center">
                       {nums.length > 0 ? (
                         <span className={getGradeColor(Math.min(...nums))}>

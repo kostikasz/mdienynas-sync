@@ -151,13 +151,13 @@ export default function IntegrationsClient({ connected: initialConnected }: Prop
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-[#1c1c17]">Integrations</h1>
+      <h1 className="text-2xl font-bold text-[var(--fg)]">Integrations</h1>
 
       {msg && (
         <div className={`text-sm rounded-lg px-4 py-3 border ${
           msg.ok
-            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-            : "bg-red-50 border-red-200 text-red-600"
+            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700"
+            : "bg-red-500/10 border-red-500/30 text-red-600"
         }`}>
           {msg.text}
         </div>
@@ -165,22 +165,24 @@ export default function IntegrationsClient({ connected: initialConnected }: Prop
 
       <div className="space-y-4">
         {/* Apple Calendar */}
-        <div className="bg-white border border-[#e8dfc0] rounded-xl p-5 shadow-sm">
+        <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl p-5 shadow-[var(--shadow)]">
           <div className="flex items-start gap-4">
-            <div className="text-2xl shrink-0">📅</div>
+            <div className="w-10 h-10 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center shrink-0">
+              <Download className="w-5 h-5 text-[var(--accent)]" />
+            </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-base font-semibold text-[#1c1c17]">Apple Calendar</h2>
-                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">No auth needed</span>
+                <h2 className="text-base font-semibold text-[var(--fg)]">Apple Calendar</h2>
+                <span className="text-xs bg-emerald-500/15 text-emerald-700 px-2 py-0.5 rounded-full">No auth needed</span>
               </div>
-              <p className="text-sm text-[#7a7060] mb-4">
-                Download a <code className="text-[#bc6c25] text-xs">.ics</code> file with all your homework entries.
+              <p className="text-sm text-[var(--fg-muted)] mb-4">
+                Download a <code className="text-[var(--accent)] text-xs">.ics</code> file with all your homework entries.
                 Import it into Apple Calendar, Google Calendar, Outlook, or any calendar app.
               </p>
               <button
                 onClick={downloadIcs}
                 disabled={downloading}
-                className="inline-flex items-center gap-2 bg-[#bc6c25] hover:bg-[#9e5a1f] disabled:opacity-50 text-white font-medium rounded-lg px-4 py-2 text-sm transition-colors"
+                className="inline-flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hov)] disabled:opacity-50 text-[var(--accent-fg)] font-medium rounded-lg px-4 py-2 text-sm transition-colors"
               >
                 <Download className="w-4 h-4" />
                 {downloading ? "Generating…" : "Download .ics"}
@@ -190,27 +192,33 @@ export default function IntegrationsClient({ connected: initialConnected }: Prop
         </div>
 
         {/* Google Calendar */}
-        <div className="bg-white border border-[#e8dfc0] rounded-xl p-5 shadow-sm">
+        <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl p-5 shadow-[var(--shadow)]">
           <div className="flex items-start gap-4">
-            <div className="text-2xl shrink-0">🗓️</div>
+            <div className="w-10 h-10 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="4" width="18" height="17" rx="2" stroke="var(--accent)" strokeWidth="1.5"/>
+                <path d="M3 9h18" stroke="var(--accent)" strokeWidth="1.5"/>
+                <path d="M8 2v3M16 2v3" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-base font-semibold text-[#1c1c17]">Google Calendar</h2>
+                <h2 className="text-base font-semibold text-[var(--fg)]">Google Calendar</h2>
                 {gcalConn ? (
                   <span className="flex items-center gap-1 text-xs text-emerald-600">
                     <CheckCircle className="w-3 h-3" /> Connected
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 text-xs text-[#9a9080]">
+                  <span className="flex items-center gap-1 text-xs text-[var(--fg-muted)]">
                     <Circle className="w-3 h-3" /> Not connected
                   </span>
                 )}
               </div>
-              <p className="text-sm text-[#7a7060] mb-4">
+              <p className="text-sm text-[var(--fg-muted)] mb-4">
                 Sync your assignment due dates as calendar events. Requires a Google account.
               </p>
               {gcalConn && (
-                <p className="text-xs text-[#9a9080] mb-3">
+                <p className="text-xs text-[var(--fg-muted)] mb-3">
                   Connected {gcalConn.connected_at ? new Date(gcalConn.connected_at).toLocaleDateString() : ""}
                   {" · "}Last synced:{" "}
                   {gcalConn.last_synced_at ? new Date(gcalConn.last_synced_at).toLocaleString() : "Never"}
@@ -222,7 +230,7 @@ export default function IntegrationsClient({ connected: initialConnected }: Prop
                     <button
                       onClick={() => sync("google_calendar")}
                       disabled={syncing === "google_calendar"}
-                      className="inline-flex items-center gap-2 bg-[#bc6c25] hover:bg-[#9e5a1f] disabled:opacity-50 text-white font-medium rounded-lg px-4 py-2 text-sm transition-colors"
+                      className="inline-flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hov)] disabled:opacity-50 text-[var(--accent-fg)] font-medium rounded-lg px-4 py-2 text-sm transition-colors"
                     >
                       <RefreshCw className={`w-4 h-4 ${syncing === "google_calendar" ? "animate-spin" : ""}`} />
                       {syncing === "google_calendar" ? "Syncing…" : "Sync now"}
@@ -230,7 +238,7 @@ export default function IntegrationsClient({ connected: initialConnected }: Prop
                     <button
                       onClick={() => disconnect("google_calendar")}
                       disabled={unlinking === "google_calendar"}
-                      className="inline-flex items-center gap-2 border border-[#e8dfc0] text-[#7a7060] hover:text-red-600 hover:border-red-300 disabled:opacity-50 font-medium rounded-lg px-4 py-2 text-sm transition-colors"
+                      className="inline-flex items-center gap-2 border border-[var(--bdr)] text-[var(--fg-muted)] hover:text-red-600 hover:border-red-300 disabled:opacity-50 font-medium rounded-lg px-4 py-2 text-sm transition-colors"
                     >
                       <Unlink className="w-4 h-4" />
                       {unlinking === "google_calendar" ? "Disconnecting…" : "Disconnect"}
@@ -239,7 +247,7 @@ export default function IntegrationsClient({ connected: initialConnected }: Prop
                 ) : (
                   <button
                     onClick={connectGcal}
-                    className="inline-flex items-center gap-2 bg-[#bc6c25] hover:bg-[#9e5a1f] text-white font-medium rounded-lg px-4 py-2 text-sm transition-colors"
+                    className="inline-flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hov)] text-[var(--accent-fg)] font-medium rounded-lg px-4 py-2 text-sm transition-colors"
                   >
                     Connect Google Calendar
                   </button>
@@ -250,29 +258,33 @@ export default function IntegrationsClient({ connected: initialConnected }: Prop
         </div>
 
         {/* Notion */}
-        <div className="bg-white border border-[#e8dfc0] rounded-xl p-5 shadow-sm">
+        <div className="bg-[var(--surface)] border border-[var(--bdr)] rounded-xl p-5 shadow-[var(--shadow)]">
           <div className="flex items-start gap-4">
-            <div className="text-2xl shrink-0">📓</div>
+            <div className="w-10 h-10 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-[var(--accent)]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M4.5 3.75a.75.75 0 0 0-.75.75v15c0 .414.336.75.75.75h15a.75.75 0 0 0 .75-.75v-15a.75.75 0 0 0-.75-.75h-15zm1.5 1.5h12v12h-12v-12zm2.25 2.25v7.5h1.5v-4.5l2.25 4.5h1.5v-7.5h-1.5v4.5l-2.25-4.5h-1.5z"/>
+              </svg>
+            </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-base font-semibold text-[#1c1c17]">Notion</h2>
+                <h2 className="text-base font-semibold text-[var(--fg)]">Notion</h2>
                 {notionConn ? (
                   <span className="flex items-center gap-1 text-xs text-emerald-600">
                     <CheckCircle className="w-3 h-3" /> Connected
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 text-xs text-[#9a9080]">
+                  <span className="flex items-center gap-1 text-xs text-[var(--fg-muted)]">
                     <Circle className="w-3 h-3" /> Not connected
                   </span>
                 )}
               </div>
-              <p className="text-sm text-[#7a7060] mb-4">
+              <p className="text-sm text-[var(--fg-muted)] mb-4">
                 Push your course grades to a Notion database. Requires a Notion integration with OAuth.
               </p>
 
               {notionConn && (
                 <>
-                  <p className="text-xs text-[#9a9080] mb-3">
+                  <p className="text-xs text-[var(--fg-muted)] mb-3">
                     Connected {notionConn.connected_at ? new Date(notionConn.connected_at).toLocaleDateString() : ""}
                     {" · "}Last synced:{" "}
                     {notionConn.last_synced_at ? new Date(notionConn.last_synced_at).toLocaleString() : "Never"}
@@ -280,13 +292,13 @@ export default function IntegrationsClient({ connected: initialConnected }: Prop
 
                   {/* Database ID input */}
                   <div className="mb-3">
-                    <label className="block text-xs text-[#9a9080] mb-1">
+                    <label className="block text-xs text-[var(--fg-muted)] mb-1">
                       Notion Database ID{" "}
                       <a
                         href="https://www.notion.so/my-integrations"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-0.5 text-[#bc6c25] hover:text-[#9e5a1f]"
+                        className="inline-flex items-center gap-0.5 text-[var(--accent)] hover:text-[var(--accent-hov)]"
                       >
                         <ExternalLink className="w-3 h-3" /> Manage integrations
                       </a>
@@ -297,12 +309,12 @@ export default function IntegrationsClient({ connected: initialConnected }: Prop
                         value={notionDbId}
                         onChange={(e) => setNotionDbId(e.target.value)}
                         placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                        className="flex-1 bg-[#fefae0] border border-[#e8dfc0] rounded-lg px-3 py-2 text-[#1c1c17] text-sm placeholder-[#c0b090] focus:outline-none focus:border-[#bc6c25] transition-colors font-mono"
+                        className="flex-1 bg-[var(--input-bg)] border border-[var(--input-bdr)] rounded-lg px-3 py-2 text-[var(--fg)] text-sm placeholder-[var(--fg-muted)] focus:outline-none focus:border-[var(--input-focus)] transition-colors font-mono"
                       />
                       <button
                         onClick={saveNotionDbId}
                         disabled={savingNotionDb || !notionDbId.trim()}
-                        className="px-3 py-2 bg-[#e8dfc0] hover:bg-[#d4c9a0] disabled:opacity-50 text-[#1c1c17] text-sm rounded-lg transition-colors"
+                        className="px-3 py-2 bg-[var(--surface-2)] hover:bg-[var(--bdr)] disabled:opacity-50 text-[var(--fg)] text-sm rounded-lg transition-colors"
                       >
                         {savingNotionDb ? "Saving…" : "Save"}
                       </button>
@@ -317,7 +329,7 @@ export default function IntegrationsClient({ connected: initialConnected }: Prop
                     <button
                       onClick={() => sync("notion")}
                       disabled={syncing === "notion" || !notionConn.metadata?.database_id}
-                      className="inline-flex items-center gap-2 bg-[#bc6c25] hover:bg-[#9e5a1f] disabled:opacity-50 text-white font-medium rounded-lg px-4 py-2 text-sm transition-colors"
+                      className="inline-flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hov)] disabled:opacity-50 text-[var(--accent-fg)] font-medium rounded-lg px-4 py-2 text-sm transition-colors"
                     >
                       <RefreshCw className={`w-4 h-4 ${syncing === "notion" ? "animate-spin" : ""}`} />
                       {syncing === "notion" ? "Syncing…" : "Sync now"}
@@ -325,7 +337,7 @@ export default function IntegrationsClient({ connected: initialConnected }: Prop
                     <button
                       onClick={() => disconnect("notion")}
                       disabled={unlinking === "notion"}
-                      className="inline-flex items-center gap-2 border border-[#e8dfc0] text-[#7a7060] hover:text-red-600 hover:border-red-300 disabled:opacity-50 font-medium rounded-lg px-4 py-2 text-sm transition-colors"
+                      className="inline-flex items-center gap-2 border border-[var(--bdr)] text-[var(--fg-muted)] hover:text-red-600 hover:border-red-300 disabled:opacity-50 font-medium rounded-lg px-4 py-2 text-sm transition-colors"
                     >
                       <Unlink className="w-4 h-4" />
                       {unlinking === "notion" ? "Disconnecting…" : "Disconnect"}
@@ -334,7 +346,7 @@ export default function IntegrationsClient({ connected: initialConnected }: Prop
                 ) : (
                   <button
                     onClick={connectNotion}
-                    className="inline-flex items-center gap-2 bg-[#bc6c25] hover:bg-[#9e5a1f] text-white font-medium rounded-lg px-4 py-2 text-sm transition-colors"
+                    className="inline-flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hov)] text-[var(--accent-fg)] font-medium rounded-lg px-4 py-2 text-sm transition-colors"
                   >
                     Connect Notion
                   </button>

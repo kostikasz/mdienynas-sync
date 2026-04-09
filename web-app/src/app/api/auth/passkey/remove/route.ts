@@ -1,36 +1,19 @@
-import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
+import { NextResponse } from "next/server"
 
-export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+export async function POST(req: Request) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const { id } = await req.json() as { id: string }
+
+  if (!id) {
+    return NextResponse.json({ error: "id required" }, { status: 400 })
   }
 
-  let body: { id: string }
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
-  }
+  // Use deleteMany with userId to ensure ownership (user can only delete their own passkeys)
+  await prisma.passkey.deleteMany({ where: { id, userId: session.user.id } })
 
-  if (!body.id) {
-    return NextResponse.json({ error: "Missing passkey id" }, { status: 400 })
-  }
-
-  const admin = createAdminClient()
-  const { error } = await admin
-    .from("passkeys")
-    .delete()
-    .eq("id", body.id)
-    .eq("user_id", user.id) // Ensure the user owns this passkey
-
-  if (error) {
-    return NextResponse.json({ error: "Failed to remove passkey" }, { status: 500 })
-  }
-
-  return NextResponse.json({ removed: true })
+  return NextResponse.json({ ok: true })
 }

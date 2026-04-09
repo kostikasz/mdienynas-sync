@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 
 const CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     ?? ""
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? ""
@@ -9,11 +10,9 @@ function callbackUrl(origin: string) {
   return `${origin}/api/integrations/gcal/callback`
 }
 
-// GET /api/integrations/gcal — initiate OAuth
 export async function GET(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   if (!CLIENT_ID) return NextResponse.json({ error: "Google OAuth not configured" }, { status: 500 })
 
@@ -25,85 +24,68 @@ export async function GET(req: NextRequest) {
     scope:         SCOPES,
     access_type:   "offline",
     prompt:        "consent",
-    state:         user.id,
+    state:         session.user.id,
   })
 
   return NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`)
 }
 
-// DELETE /api/integrations/gcal — disconnect
 export async function DELETE() {
-  const supabase = await createClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  await supabase.from("integrations").delete().eq("user_id", user.id).eq("provider", "google_calendar")
+  await prisma.integration.deleteMany({
+    where: { userId: session.user.id, provider: "google_calendar" },
+  })
   return NextResponse.json({ ok: true })
 }
 
-// POST /api/integrations/gcal — sync grades → Google Calendar events
 export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { data: integration } = await supabase
-    .from("integrations")
-    .select("access_token, refresh_token, metadata")
-    .eq("user_id", user.id)
-    .eq("provider", "google_calendar")
-    .single()
-
+  const integration = await prisma.integration.findUnique({
+    where: { userId_provider: { userId: session.user.id, provider: "google_calendar" } },
+  })
   if (!integration) return NextResponse.json({ error: "Not connected" }, { status: 400 })
 
   const { origin } = new URL(req.url)
+  let accessToken = integration.accessToken
 
-  // Refresh access token if needed
-  let accessToken = integration.access_token
-  if (integration.refresh_token) {
+  if (integration.refreshToken) {
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method:  "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body:    new URLSearchParams({
         client_id:     CLIENT_ID,
         client_secret: CLIENT_SECRET,
-        refresh_token: integration.refresh_token,
+        refresh_token: integration.refreshToken,
         grant_type:    "refresh_token",
       }),
     })
     if (tokenRes.ok) {
       const tokens = await tokenRes.json()
-      accessToken = tokens.access_token
-      await supabase.from("integrations")
-        .update({ access_token: accessToken })
-        .eq("user_id", user.id)
-        .eq("provider", "google_calendar")
+      accessToken  = tokens.access_token
+      await prisma.integration.update({
+        where: { userId_provider: { userId: session.user.id, provider: "google_calendar" } },
+        data:  { accessToken },
+      })
     }
   }
 
-  // Get latest grades snapshot
-  const { data: snapshot } = await supabase
-    .from("grades_snapshots")
-    .select("raw_json")
-    .eq("user_id", user.id)
-    .order("scraped_at", { ascending: false })
-    .limit(1)
-    .single()
-
-  if (!snapshot?.raw_json) return NextResponse.json({ error: "No grades data found" }, { status: 404 })
+  const snapshot = await prisma.gradesSnapshot.findFirst({
+    where:   { userId: session.user.id },
+    orderBy: { scrapedAt: "desc" },
+  })
+  if (!snapshot?.rawJson) return NextResponse.json({ error: "No grades data found" }, { status: 404 })
 
   type Assignment = {
-    id?: string
-    name?: string
-    due_date?: string
-    category?: string
-    score?: number
-    max_score?: number
-    status?: string
+    id?: string; name?: string; due_date?: string; category?: string
+    score?: number; max_score?: number; status?: string
   }
   type Course = { id?: string; name?: string; assignments?: Assignment[] }
-  const grades = snapshot.raw_json as { courses?: Course[] }
-  const calendarId: string = (integration.metadata as Record<string, string> | null)?.calendar_id ?? "primary"
+  const grades     = snapshot.rawJson as { courses?: Course[] }
+  const calendarId = (integration.metadata as Record<string, string> | null)?.calendar_id ?? "primary"
 
   let created = 0
   let skipped = 0
@@ -112,39 +94,27 @@ export async function POST(req: NextRequest) {
     for (const assignment of course.assignments ?? []) {
       if (!assignment.due_date) { skipped++; continue }
 
-      const startDate = assignment.due_date.slice(0, 10)
-      const summary   = `[${course.name ?? course.id ?? "Course"}] ${assignment.name ?? "Assignment"}`
+      const startDate   = assignment.due_date.slice(0, 10)
+      const summary     = `[${course.name ?? course.id ?? "Course"}] ${assignment.name ?? "Assignment"}`
       const description = [
         assignment.category ? `Category: ${assignment.category}` : null,
-        assignment.score != null && assignment.max_score != null
-          ? `Score: ${assignment.score}/${assignment.max_score}`
-          : null,
+        assignment.score != null && assignment.max_score != null ? `Score: ${assignment.score}/${assignment.max_score}` : null,
         assignment.status ? `Status: ${assignment.status}` : null,
       ].filter(Boolean).join("\n")
 
-      const event = {
-        summary,
-        description,
-        start: { date: startDate },
-        end:   { date: startDate },
-      }
-
       await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
         method:  "POST",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type":  "application/json",
-        },
-        body: JSON.stringify(event),
+        headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body:    JSON.stringify({ summary, description, start: { date: startDate }, end: { date: startDate } }),
       })
       created++
     }
   }
 
-  await supabase.from("integrations")
-    .update({ last_synced_at: new Date().toISOString() })
-    .eq("user_id", user.id)
-    .eq("provider", "google_calendar")
+  await prisma.integration.update({
+    where: { userId_provider: { userId: session.user.id, provider: "google_calendar" } },
+    data:  { lastSyncedAt: new Date() },
+  })
 
   return NextResponse.json({ ok: true, created, skipped })
 }
