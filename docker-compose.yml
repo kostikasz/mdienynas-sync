@@ -7,23 +7,19 @@ services:
     depends_on:
       - app-db
     environment:
+      - APP_PORT=3000
+      - APP_BASE_URL=${APP_BASE_URL}
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@app-db:5432/${DB_NAME}
-      - KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER}
-      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
-      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
-      - KEYCLOAK_ADMIN_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
-      - AUTH_SECRET=${AUTH_SECRET}
-      - AUTH_URL=${AUTH_URL}
-      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY}
       - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}
-      - NOTION_CLIENT_ID=${NOTION_CLIENT_ID}
-      - NOTION_CLIENT_SECRET=${NOTION_CLIENT_SECRET}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - PAYSERA_PROJECT_ID=${PAYSERA_PROJECT_ID}
-      - PAYSERA_SIGN_PASSWORD=${PAYSERA_SIGN_PASSWORD}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
     networks:
       - mdienynas-internal
       - traefik-public
@@ -34,22 +30,6 @@ services:
       - "traefik.http.routers.web.entrypoints=websecure"
       - "traefik.http.routers.web.tls.certresolver=letsencrypt"
       - "traefik.http.services.web.loadbalancer.server.port=3000"
-
-  migrator:
-    build:
-      context: ./web-app
-      dockerfile: Dockerfile
-      target: builder
-    command: npx prisma migrate deploy
-    environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@app-db:5432/${DB_NAME}
-    depends_on:
-      - app-db
-    networks:
-      - mdienynas-internal
-    profiles:
-      - migrate
-    restart: "no"
 
   app-db:
     image: postgres:16
@@ -63,45 +43,6 @@ services:
     networks:
       - mdienynas-internal
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:latest
-    restart: unless-stopped
-    command: ["start"]
-    depends_on:
-      - keycloak-db
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KC_DB_NAME}
-      KC_DB_USERNAME: ${KC_DB_USER}
-      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
-      KC_HOSTNAME: ${KC_HOSTNAME}
-      KC_HTTP_ENABLED: "true"
-      KC_PROXY_HEADERS: xforwarded
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-    networks:
-      - mdienynas-internal
-      - traefik-public
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik-public"
-      - "traefik.http.routers.keycloak.rule=Host(`${KC_HOSTNAME}`)"
-      - "traefik.http.routers.keycloak.entrypoints=websecure"
-      - "traefik.http.routers.keycloak.tls.certresolver=letsencrypt"
-      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
-
-  keycloak-db:
-    image: postgres:16
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${KC_DB_USER}
-      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
-      POSTGRES_DB: ${KC_DB_NAME}
-    volumes:
-      - keycloak-db-data:/var/lib/postgresql/data
-    networks:
-      - mdienynas-internal
-
 networks:
   mdienynas-internal:
     driver: bridge
@@ -110,4 +51,3 @@ networks:
 
 volumes:
   app-db-data:
-  keycloak-db-data:

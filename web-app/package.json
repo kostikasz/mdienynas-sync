@@ -1,0 +1,21 @@
+{
+  "name": "web-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server/index.js",
+    "start": "node src/server/index.js",
+    "migrate": "node src/server/db/migrate.js",
+    "test": "node --test",
+    "check": "node --test && node --check src/server/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie": "^1.0.2",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "nodemailer": "^6.10.1",
+    "pg": "^8.16.3"
+  }
+}
