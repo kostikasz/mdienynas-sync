@@ -1,29 +1,25 @@
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
+import { prisma } from "@/lib/prisma"
 import { PublicNavbar } from "@/components/PublicNavbar"
 import { PaymentClient } from "./PaymentClient"
 
 export default async function PaymentPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await auth()
 
-  if (!user) {
+  if (!session) {
     redirect("/checkout")
   }
 
-  // If user already has an active pro subscription, send them to dashboard
-  const { data: sub } = await supabase
-    .from("subscriptions")
-    .select("plan, status, expires_at")
-    .eq("user_id", user.id)
-    .single()
+  const sub = await prisma.subscription.findUnique({
+    where:  { userId: session.user.id },
+    select: { plan: true, status: true, expiresAt: true },
+  })
 
   const isActivePro =
     sub?.plan === "pro" &&
     sub?.status === "active" &&
-    (sub?.expires_at === null || new Date(sub.expires_at) > new Date())
+    (sub?.expiresAt === null || sub.expiresAt > new Date())
 
   if (isActivePro) {
     redirect("/dashboard")

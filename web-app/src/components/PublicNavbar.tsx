@@ -12,13 +12,7 @@ const NAV_LINKS = [
 
 export function PublicNavbar() {
   const pathname = usePathname()
-  const isHome     = pathname === "/"
-  const isLogin    = pathname === "/login"
-  const isRegister = pathname === "/register"
-
-  const showSignIn     = !isLogin && !isRegister
-  const showGetStarted = !isRegister
-  const showSignInAlt  = isRegister
+  const isHome = pathname === "/"
 
   return (
     <nav
@@ -63,35 +57,21 @@ export function PublicNavbar() {
       <div className="flex-none w-36 flex items-center justify-end gap-1">
         <ThemeToggle />
 
-        {showSignIn && (
-          <Link
-            href="/login"
-            className="text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
-            style={{ color: "var(--fg-muted)" }}
-          >
-            Sign in
-          </Link>
-        )}
+        <Link
+          href="/login"
+          className="text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
+          style={{ color: "var(--fg-muted)" }}
+        >
+          Sign in
+        </Link>
 
-        {showGetStarted && (
-          <Link
-            href="/register"
-            className="text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors"
-            style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
-          >
-            Get started
-          </Link>
-        )}
-
-        {showSignInAlt && (
-          <Link
-            href="/login"
-            className="text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
-            style={{ border: "1px solid var(--bdr)", color: "var(--fg-muted)" }}
-          >
-            Sign in
-          </Link>
-        )}
+        <Link
+          href="/register"
+          className="text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors"
+          style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
+        >
+          Get started
+        </Link>
       </div>
     </nav>
   )

@@ -5,11 +5,13 @@ import SecurityClient from "./SecurityClient"
 
 export default async function SecurityPage() {
   const session = await auth()
-  if (!session) redirect("/login")
+  if (!session) redirect("/api/auth/signin")
+
+  const accountUrl = `${process.env.KEYCLOAK_ISSUER}/account`
 
   return (
     <AppShell>
-      <SecurityClient />
+      <SecurityClient accountUrl={accountUrl} />
     </AppShell>
   )
 }
