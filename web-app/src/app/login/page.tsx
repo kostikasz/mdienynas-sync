@@ -1,98 +1,47 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { signIn } from "next-auth/react"
+import { createClient } from "@/lib/supabase/client"
+import { startAuthentication } from "@simplewebauthn/browser"
 import { Suspense } from "react"
 import { PublicNavbar } from "@/components/PublicNavbar"
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile"
-import { startAuthentication } from "@simplewebauthn/browser"
 
 function LoginForm() {
   const searchParams = useSearchParams()
-  const router       = useRouter()
 
   const [email,          setEmail]          = useState("")
   const [password,       setPassword]       = useState("")
   const [showPassword,   setShowPassword]   = useState(false)
   const [hasPasskey,     setHasPasskey]     = useState(false)
-  const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [error,          setError]          = useState<string | null>(
     searchParams.get("error") === "oauth" ? "OAuth sign-in failed. Please try again." : null
   )
-  const [loading,        setLoading]        = useState<"email" | "google" | "discord" | null>(null)
+  const [loading, setLoading] = useState<"email" | "passkey" | "google" | "discord" | null>(null)
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
 
-  const turnstileRef = useRef<TurnstileInstance>(null)
+  const emailRef      = useRef<HTMLInputElement>(null)
+  const turnstileRef  = useRef<TurnstileInstance>(null)
 
-  function handleEmailBlur() {
+  async function handleEmailBlur() {
     const trimmed = email.trim()
     if (!trimmed || !trimmed.includes("@")) return
     setShowPassword(true)
-
-    // Check if email has a passkey registered
-    fetch(`/api/auth/passkey/check?email=${encodeURIComponent(trimmed)}`)
-      .then(res => res.json())
-      .then(data => setHasPasskey(data.hasPasskey))
-      .catch(() => setHasPasskey(false))
-  }
-
-  async function handlePasskeySignIn() {
-    setError(null)
-    setPasskeyLoading(true)
-
     try {
-      // Get authentication options
-      const optionsRes = await fetch("/api/auth/passkey/authenticate/options", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
-      })
-      if (!optionsRes.ok) throw new Error("Failed to get options")
-      const options = await optionsRes.json()
-
-      // Start WebAuthn ceremony
-      const authResponse = await startAuthentication({ optionsJSON: options })
-
-      // Verify with server
-      const verifyRes = await fetch("/api/auth/passkey/authenticate/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ response: authResponse, email: email.trim() }),
-      })
-      if (!verifyRes.ok) throw new Error("Verification failed")
-      const { passkeyToken } = await verifyRes.json()
-
-      // Sign in with NextAuth using the passkeyToken
-      const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard"
-      const result = await signIn("credentials", {
-        passkeyToken,
-        redirect: false,
-      })
-
-      if (result?.error) throw new Error("Sign-in failed")
-
-      // Check if MFA is pending — use getSession() (App Router pattern, not Pages Router fetch)
-      const { getSession } = await import("next-auth/react")
-      const updatedSession = await getSession()
-
-      if (updatedSession?.user?.mfaPending) {
-        router.push("/2fa")
-      } else {
-        router.push(callbackUrl)
-      }
+      const res = await fetch(`/api/auth/passkey/check?email=${encodeURIComponent(trimmed)}`)
+      const data = await res.json()
+      setHasPasskey(!!data.hasPasskey)
     } catch {
-      setError("Passkey sign-in failed. Try your password instead.")
-    } finally {
-      setPasskeyLoading(false)
+      // Fail silently
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!showPassword) {
-      handleEmailBlur()
+      await handleEmailBlur()
       return
     }
     setError(null)
@@ -118,14 +67,10 @@ function LoginForm() {
       return
     }
 
-    const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard"
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    })
+    const supabase = createClient()
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (result?.error) {
+    if (signInError) {
       setError("Wrong email or password.")
       turnstileRef.current?.reset()
       setTurnstileToken(null)
@@ -133,14 +78,76 @@ function LoginForm() {
       return
     }
 
-    // Check if MFA is pending — use getSession() (App Router pattern)
-    const { getSession } = await import("next-auth/react")
-    const updatedSession = await getSession()
-
-    if (updatedSession?.user?.mfaPending) {
-      router.push("/2fa")
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
+      window.location.href = "/auth/mfa"
     } else {
-      router.push(callbackUrl)
+      window.location.href = "/dashboard"
+    }
+  }
+
+  async function handlePasskey() {
+    setError(null)
+    setLoading("passkey")
+
+    try {
+      const optRes = await fetch("/api/auth/passkey/authenticate/options", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ email: email.trim() }),
+      })
+
+      if (!optRes.ok) {
+        setError("Could not start passkey sign-in. Try your password instead.")
+        setLoading(null)
+        return
+      }
+
+      const options = await optRes.json()
+
+      let authResponse
+      try {
+        authResponse = await startAuthentication({ optionsJSON: options })
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("abort")) {
+          setLoading(null)
+          return
+        }
+        setError("Passkey sign-in failed. Try your password instead.")
+        setLoading(null)
+        return
+      }
+
+      const verRes = await fetch("/api/auth/passkey/authenticate/verify", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ response: authResponse }),
+      })
+
+      const verData = await verRes.json()
+      if (!verRes.ok || !verData.verified) {
+        setError("Passkey verification failed. Try your password instead.")
+        setLoading(null)
+        return
+      }
+
+      const supabase = createClient()
+      const { error: otpError } = await supabase.auth.verifyOtp({
+        token_hash: verData.hashed_token,
+        type:       "magiclink",
+      })
+
+      if (otpError) {
+        setError("Failed to create session. Please try again.")
+        setLoading(null)
+        return
+      }
+
+      window.location.href = "/dashboard"
+    } catch {
+      setError("An unexpected error occurred. Please try again.")
+      setLoading(null)
     }
   }
 
@@ -148,11 +155,19 @@ function LoginForm() {
     setError(null)
     setLoading(provider)
 
-    const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard"
-    await signIn("keycloak", { callbackUrl }, { kc_idp_hint: provider })
+    const supabase = createClient()
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${location.origin}/auth/callback` },
+    })
+
+    if (oauthError) {
+      setError(oauthError.message)
+      setLoading(null)
+    }
   }
 
-  const isDisabled = loading !== null || passkeyLoading
+  const isDisabled = loading !== null
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
@@ -225,12 +240,13 @@ function LoginForm() {
                   Email
                 </label>
                 <input
+                  ref={emailRef}
                   type="email"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value)
-                    setShowPassword(false)
                     setHasPasskey(false)
+                    setShowPassword(false)
                   }}
                   onBlur={handleEmailBlur}
                   required
@@ -244,11 +260,11 @@ function LoginForm() {
                   onFocus={(e) => (e.target.style.borderColor = "var(--input-focus)")}
                   onBlurCapture={(e) => (e.target.style.borderColor = "var(--input-bdr)")}
                   placeholder="you@example.com"
-                  autoComplete="email"
+                  autoComplete="email webauthn"
                 />
               </div>
 
-              {/* Password + passkey button (shown after email blur) */}
+              {/* Password */}
               {showPassword && (
                 <>
                   <div>
@@ -278,12 +294,11 @@ function LoginForm() {
                     />
                   </div>
 
-                  {/* Passkey button — shown below password when email has a passkey */}
                   {hasPasskey && (
                     <button
                       type="button"
-                      onClick={handlePasskeySignIn}
-                      disabled={isDisabled || passkeyLoading}
+                      onClick={handlePasskey}
+                      disabled={isDisabled}
                       className="w-full flex items-center justify-center gap-2 font-medium rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50"
                       style={{
                         background: "var(--surface-2)",
@@ -291,23 +306,22 @@ function LoginForm() {
                         color: "var(--accent)",
                       }}
                     >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z" />
-                        <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" />
-                      </svg>
-                      {passkeyLoading ? "Verifying…" : "Sign in with passkey"}
+                      <PasskeyIcon />
+                      {loading === "passkey" ? "Waiting for authenticator…" : "Sign in with passkey"}
                     </button>
                   )}
-
-                  <Turnstile
-                    ref={turnstileRef}
-                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-                    options={{ theme: "auto" }}
-                    onSuccess={(token) => setTurnstileToken(token)}
-                    onError={() => setTurnstileToken(null)}
-                    onExpire={() => setTurnstileToken(null)}
-                  />
                 </>
+              )}
+
+              {showPassword && (
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                  options={{ theme: "auto" }}
+                  onSuccess={(token) => setTurnstileToken(token)}
+                  onError={() => setTurnstileToken(null)}
+                  onExpire={() => setTurnstileToken(null)}
+                />
               )}
 
               {error && (
@@ -379,6 +393,16 @@ function DiscordIcon() {
   return (
     <svg width="20" height="15" viewBox="0 0 71 55" aria-hidden="true" fill="currentColor">
       <path d="M60.1 4.9A58.5 58.5 0 0045.7.4a.2.2 0 00-.2.1 40.7 40.7 0 00-1.8 3.7 54 54 0 00-16.2 0A37.6 37.6 0 0025.6.5a.2.2 0 00-.2-.1A58.3 58.3 0 0010.9 4.9a.2.2 0 00-.1.1C1.6 18.1-.9 31 .3 43.6a.2.2 0 00.1.2 58.8 58.8 0 0017.7 8.9.2.2 0 00.2-.1 42 42 0 003.6-5.9.2.2 0 00-.1-.3 38.7 38.7 0 01-5.5-2.6.2.2 0 010-.4l1.1-.8a.2.2 0 01.2 0c11.5 5.3 24 5.3 35.4 0a.2.2 0 01.2 0l1.1.8a.2.2 0 010 .4 36.2 36.2 0 01-5.5 2.6.2.2 0 00-.1.3 47.1 47.1 0 003.6 5.9.2.2 0 00.2.1 58.6 58.6 0 0017.7-8.9.2.2 0 00.1-.2c1.5-15.2-2.5-28-10.5-39.6a.2.2 0 00-.1-.1zM23.7 35.8c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.8 7.2-6.4 7.2zm23.6 0c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.8 7.2-6.4 7.2z"/>
+    </svg>
+  )
+}
+
+function PasskeyIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="7.5" cy="15.5" r="5.5"/>
+      <path d="M21 2l-9.6 9.6"/>
+      <path d="M15.5 7.5l3 3L22 7l-3-3"/>
     </svg>
   )
 }

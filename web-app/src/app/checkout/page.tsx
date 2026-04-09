@@ -1,5 +1,5 @@
-import { auth } from "@/lib/auth"
 import { PublicNavbar } from "@/components/PublicNavbar"
+import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { CheckoutAuth } from "./CheckoutAuth"
 
@@ -49,8 +49,10 @@ function CheckIcon() {
 }
 
 export default async function CheckoutPage() {
-  const session = await auth()
-  const user = session?.user ?? null
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
